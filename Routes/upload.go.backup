@@ -1,0 +1,129 @@
+package routes
+
+import (
+	"bufio"
+	"encoding/json"
+	"filetransfer-backend/postsql"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+)
+
+const uploadCopyBufferSize = 1024 * 1024
+
+var uploadCopyBufferPool = sync.Pool{
+	New: func() any {
+		b := make([]byte, uploadCopyBufferSize)
+		return &b
+	},
+}
+
+func HandleUpload(w http.ResponseWriter, rq *http.Request) {
+	if rq.Method != "POST" {
+		fmt.Fprintf(w, "<h1>Can't identify the request</h1>")
+		return
+	}
+
+	reader, err := rq.MultipartReader()
+	if err != nil {
+		fmt.Fprintf(w, "<h1>%s</h1>", err.Error())
+		return
+	}
+
+	for {
+		part, err := reader.NextPart()
+		if err == io.EOF { // zé fini de liiiire :3
+			break
+		}
+		if err != nil {
+			http.Error(w, "Mince ! Une erreur est survenue lors du téléversement...", http.StatusInternalServerError)
+			return
+		}
+
+		if part.FormName() == "file" {
+			fn := filepath.Base(part.FileName())
+			if fn == "" || strings.HasPrefix(fn, ".") || strings.HasPrefix(fn, "_") { // on va éviter les conneries ici
+				part.Close()
+				continue
+			}
+
+			tmpDirPath, err := os.MkdirTemp("./files", "upload-")
+			if err != nil {
+				part.Close()
+				http.Error(w, `{"error": "Server error creating temporary directory"}`, http.StatusInternalServerError)
+				return
+			}
+
+			dest, err := os.Create(filepath.Join(tmpDirPath, fn))
+			if err != nil {
+				part.Close()
+				os.RemoveAll(tmpDirPath)
+				http.Error(w, `{"error":"Server error creating the file"}`, http.StatusInternalServerError)
+				return
+			}
+
+			bufferedDest := bufio.NewWriterSize(dest, uploadCopyBufferSize)
+			copyBuffer := uploadCopyBufferPool.Get().(*[]byte)
+			size, err := io.CopyBuffer(bufferedDest, part, *copyBuffer)
+			uploadCopyBufferPool.Put(copyBuffer)
+			if err != nil {
+				dest.Close()
+				part.Close()
+				os.RemoveAll(tmpDirPath)
+				http.Error(w, `{"error":"Server error copying file"}`, http.StatusInternalServerError)
+				return
+			}
+			if err := bufferedDest.Flush(); err != nil {
+				dest.Close()
+				part.Close()
+				os.RemoveAll(tmpDirPath)
+				http.Error(w, `{"error":"Server error writing file"}`, http.StatusInternalServerError)
+				return
+			}
+			if err := dest.Close(); err != nil {
+				part.Close()
+				os.RemoveAll(tmpDirPath)
+				http.Error(w, `{"error":"Server error closing file"}`, http.StatusInternalServerError)
+				return
+			}
+			part.Close()
+
+			ip, _, err := net.SplitHostPort(rq.RemoteAddr)
+			if err != nil {
+				ip = rq.RemoteAddr
+			}
+
+			id, err := postsql.CreateFileRecord(fn, size, ip, rq.URL.Query().Get("password"))
+			if err != nil {
+				os.RemoveAll(tmpDirPath)
+				http.Error(w, `{"error":"Server error storing metadata"}`, http.StatusInternalServerError)
+				return
+			}
+
+			finalDirPath := filepath.Join("./files", id)
+			if err := os.Rename(tmpDirPath, finalDirPath); err != nil {
+				_ = postsql.DeleteFile(id)
+				os.RemoveAll(tmpDirPath)
+				http.Error(w, `{"error":"Server error finalizing upload"}`, http.StatusInternalServerError)
+				return
+			}
+
+			response := map[string]interface{}{
+				"id":   id,
+				"size": size,
+				"ip":   ip,
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+	}
+	http.Error(w, `{"error":"Can't identify the request or file not found"}`, http.StatusBadRequest)
+}

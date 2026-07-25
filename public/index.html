@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="https://file.titino.app/KnexMg?download=true" type="image/x-icon">
+    <!-- Description Google et Image présente sur l'affichage Discord -->
+    <meta name="description" content="FTransfer vous offre la possibilité de partager des fichiers gratuitement, sans limite de fichiers et avec une bande passante d'1Gbps&nbsp;Il existe également un bot discord !">
+    <meta property="og:title" content="FTransfer - Partagez vos fichiers gratuitement">
+    <meta property="og:description" content="FTransfer vous offre la possibilité de partager des fichiers gratuitement, sans limite de fichiers et avec une bande passante d'1Gbps&nbsp;Il existe également un bot discord !">
+    <meta property="og:image" content="https://file.titino.app/KnexMg?download=true">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        html[data-theme="light"] body { background-color: #f3f4f6 !important; color: #111827 !important; }
+        html[data-theme="dark"] body { background-color: #0f172a !important; color: #f8fafc !important; }
+        html[data-theme="light"] #uploadMain h1 { color: #111827 !important; }
+        html[data-theme="dark"] #uploadMain h1 { color: #f8fafc !important; }
+        html[data-theme="light"] #uploadMain > div > span { color: #4b5563 !important; }
+        html[data-theme="dark"] #uploadMain > div > span { color: #cbd5e1 !important; }
+        html[data-theme="light"] #uploadMain > div > div > p { color: #6b7280 !important; }
+        html[data-theme="dark"] #uploadMain > div > div > p { color: #94a3b8 !important; }
+        html[data-theme="light"] #password { background-color: #ffffff !important; color: #111827 !important; border-color: #d1d5db !important; }
+        html[data-theme="dark"] #password { background-color: #1f2937 !important; color: #f8fafc !important; border-color: #4b5563 !important; }
+        html[data-theme="light"] #progressContainer > div { background-color: #e5e7eb !important; }
+        html[data-theme="dark"] #progressContainer > div { background-color: #374151 !important; }
+        html[data-theme="light"] #progressText { color: #4b5563 !important; }
+        html[data-theme="dark"] #progressText { color: #cbd5e1 !important; }
+        html[data-theme="light"] #fileName { color: #2563eb !important; }
+        html[data-theme="dark"] #fileName { color: #60a5fa !important; }
+        html[data-theme="light"] #message { color: #374151 !important; }
+        html[data-theme="dark"] #message { color: #d1d5db !important; }
+        html[data-theme="light"] footer { color: #6b7280 !important; }
+        html[data-theme="dark"] footer { color: #94a3b8 !important; }
+        html[data-theme="light"] #themeToggle { background-color: #000000 !important; color: #ffffff !important; }
+        html[data-theme="dark"] #themeToggle { background-color: #ffffff !important; color: #000000 !important; }
+    </style>
+    <title>Upload de fichier</title>
+</head>
+<body class="flex flex-col min-h-screen bg-gray-100 text-gray-900 transition-colors duration-200 dark:bg-gray-900 dark:text-gray-100">
+
+<button id="themeToggle" type="button" class="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-xl ring-1 ring-black/10 transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="Changer de thème" aria-pressed="false"></button>
+
+<!-- Contenu principal -->
+<main class="flex-grow flex items-center justify-center">
+    <form id="uploadMain" class="">
+        <div class="text-center">
+            <p class="text-lg font-semibold text-indigo-600 dark:text-indigo-400">TeanoLink | Layttos</p>
+            <h1 class="mt-4 text-4xl md:text-5xl font-bold text-gray-900 dark:text-gray-100">Téléverser un fichier</h1>
+            <span class="mt-6 text-2xl text-gray-600 dark:text-gray-300">Recherchez votre fichier et cliquez sur "Téléverser".</span>
+            <div class="mt-5 space-y-4">
+                <div class="mt-6">
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Laissez vide si vous ne souhaitez pas de protection</p>
+                    <label for="password" class="sr-only">Mot de passe du fichier</label>
+                    <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            placeholder="Protégez votre fichier avec un mot de passe"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+                    >
+                </div>
+                <input type="file" name="file" id="file" class="hidden" required>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <label for="file" class="w-full sm:w-auto rounded-md bg-gray-600 px-6 py-3 text-base font-semibold text-white shadow-md hover:bg-zinc-500 hover:cursor-pointer transition dark:bg-gray-700 dark:hover:bg-gray-600">
+                        Choisir un fichier <span aria-hidden="true">&rarr;</span>
+                    </label>
+                    <button type="submit" class="w-full sm:w-auto rounded-md bg-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-md hover:cursor-pointer hover:bg-indigo-500 transition">
+                        Téléverser le fichier
+                    </button>
+                </div>
+                <div id="progressContainer" class="mt-4 hidden">
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                        <div id="progressBar" class="bg-indigo-600 h-2.5 rounded-full" style="width: 0"></div>
+                    </div>
+                    <p id="progressText" class="text-sm text-gray-600 mt-2 dark:text-gray-300">Téléchargement : 0%</p>
+                </div>
+                <div class="mt-4">
+                    <p id="fileName" class="text-base text-blue-600 dark:text-blue-400"></p>
+                    <p id="message" class="text-base text-gray-700 dark:text-gray-300"></p>
+                </div>
+            </div>
+        </div>
+    </form>
+</main>
+
+<footer class="text-center text-gray-500 mt-auto py-4 dark:text-gray-400">
+    FTransfer - Version 2.0
+</footer>
+
+
+<script>
+    const THEME_KEY = 'ft-theme';
+
+    const moonIcon = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"></path>
+        </svg>`;
+
+    const sunIcon = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+        </svg>`;
+
+    function applyTheme(theme) {
+        const isDark = theme === 'dark';
+        document.documentElement.classList.toggle('dark', isDark);
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem(THEME_KEY, theme);
+        const button = document.getElementById('themeToggle');
+        if (button) {
+            button.innerHTML = isDark ? sunIcon : moonIcon;
+            button.setAttribute('aria-pressed', String(isDark));
+            button.setAttribute('aria-label', isDark ? 'Passer au thème clair' : 'Passer au thème sombre');
+            button.classList.remove('bg-black', 'text-white', 'bg-white', 'text-black');
+            button.classList.add(isDark ? 'bg-white' : 'bg-black', isDark ? 'text-black' : 'text-white');
+        }
+    }
+
+    function initTheme() {
+        const savedTheme = localStorage.getItem(THEME_KEY);
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        applyTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+    }
+
+    function toggleTheme() {
+        const isDark = document.documentElement.classList.contains('dark');
+        applyTheme(isDark ? 'light' : 'dark');
+    }
+
+    let fileToUpload = null;
+
+    initTheme();
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+    document.addEventListener('dragover', (e) => {
+        e.preventDefault();
+    });
+
+    document.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            fileToUpload = files[0];
+            document.getElementById('fileName').textContent = "Fichier sélectionné : " + files[0].name;
+        }
+    });
+
+    document.getElementById('file').addEventListener('change', function() {
+        const fileName = this.files[0].name;
+        fileToUpload = this.files[0];
+        document.getElementById('fileName').textContent = "Fichier sélectionné : " + fileName;
+    });
+    document.getElementById('uploadMain').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const file = fileToUpload;
+        const password = document.getElementById('password').value;
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('password', password);
+
+        progressContainer.classList.remove('hidden');
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Téléchargement : 0%';
+
+        const xhr = new XMLHttpRequest();
+        let url = window.location.href + "upload";
+        if(password.trim() !== '') {
+            url += `?password=${password}`;
+        }
+        xhr.open('POST', url, true);
+
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percentComplete + '%';
+                progressText.textContent = `Téléchargement : ${percentComplete}%`;
+            }
+        };
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                const data = JSON.parse(xhr.responseText);
+                const downloadLink = window.location.href + data.id;
+                document.getElementById('message').innerHTML =
+                    `<span class="inline-flex items-center gap-2 text-green-500 dark:text-green-400">Votre fichier est téléversé : <a class="break-all underline underline-offset-2" href="${downloadLink}">${downloadLink}</a><button type="button" id="copyLinkBtn" class="rounded-md border border-green-500 px-2 py-1 text-xs font-semibold text-green-600 transition hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-950" aria-label="Copier le lien">Copier</button></span>`;
+                document.getElementById('copyLinkBtn').addEventListener('click', function() {
+                    navigator.clipboard.writeText(downloadLink);
+                });
+                progressBar.style.width = '100%';
+                progressText.textContent = 'Téléchargement terminé';
+            } else {
+                document.getElementById('message').innerHTML =
+                    '<span class="text-red-500 dark:text-red-400">Une erreur est survenue lors du téléversement</span>';
+            }
+        };
+
+        xhr.onerror = function() {
+            document.getElementById('message').innerHTML =
+                '<span class="text-red-500 dark:text-red-400">Une erreur est survenue lors du téléversement</span>';
+        };
+
+        xhr.send(formData);
+    });
+</script>
+</body>
+</html>

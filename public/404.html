@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <title>404 - Fichier introuvable</title>
+    <link rel="shortcut icon" href="img/favicon.png" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        html[data-theme="light"] body { background-color: #f3f4f6 !important; color: #111827 !important; }
+        html[data-theme="dark"] body { background-color: #0f172a !important; color: #f8fafc !important; }
+        html[data-theme="light"] h1 { color: #111827 !important; }
+        html[data-theme="dark"] h1 { color: #f8fafc !important; }
+        html[data-theme="light"] p { color: #374151 !important; }
+        html[data-theme="dark"] p { color: #cbd5e1 !important; }
+        html[data-theme="light"] a { color: #111827 !important; }
+        html[data-theme="dark"] a { color: #e5e7eb !important; }
+        html[data-theme="light"] #themeToggle { background-color: #000000 !important; color: #ffffff !important; }
+        html[data-theme="dark"] #themeToggle { background-color: #ffffff !important; color: #000000 !important; }
+    </style>
+</head>
+<body class="bg-white text-gray-900 transition-colors duration-200 dark:bg-gray-900 dark:text-gray-100">
+
+<button id="themeToggle" type="button" class="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-xl ring-1 ring-black/10 transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="Changer de thème" aria-pressed="false"></button>
+
+<main class="grid min-h-full place-items-center px-6 py-24 sm:py-32 lg:px-8">
+    <div class="text-center">
+        <p class="text-base font-semibold text-indigo-600 dark:text-indigo-400">404</p>
+        <h1 class="mt-4 text-5xl font-semibold tracking-tight text-balance text-gray-900 sm:text-7xl dark:text-gray-100">Fichier introuvable !</h1>
+        <p class="mt-6 text-lg font-medium text-pretty text-gray-500 sm:text-xl/8 dark:text-gray-300">Le fichier demandé est introuvable. Vérifiez l'identifiant utilisé.</p>
+        <div class="mt-10 flex items-center justify-center gap-x-6">
+            <a href="#" class="text-sm font-semibold text-gray-900 dark:text-gray-200">Si cela se trouve être une erreur, contactez Louison, ou Teano <span aria-hidden="true">&rarr;</span></a>
+        </div>
+    </div>
+</main>
+
+<script>
+    const THEME_KEY = 'ft-theme';
+
+    const moonIcon = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"></path>
+        </svg>`;
+
+    const sunIcon = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+        </svg>`;
+
+    function applyTheme(theme) {
+        const isDark = theme === 'dark';
+        document.documentElement.classList.toggle('dark', isDark);
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem(THEME_KEY, theme);
+        const button = document.getElementById('themeToggle');
+        if (button) {
+            button.innerHTML = isDark ? sunIcon : moonIcon;
+            button.setAttribute('aria-pressed', String(isDark));
+            button.setAttribute('aria-label', isDark ? 'Passer au thème clair' : 'Passer au thème sombre');
+            button.classList.remove('bg-black', 'text-white', 'bg-white', 'text-black');
+            button.classList.add(isDark ? 'bg-white' : 'bg-black', isDark ? 'text-black' : 'text-white');
+        }
+    }
+
+    function initTheme() {
+        const savedTheme = localStorage.getItem(THEME_KEY);
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        applyTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+    }
+
+    function toggleTheme() {
+        const isDark = document.documentElement.classList.contains('dark');
+        applyTheme(isDark ? 'light' : 'dark');
+    }
+
+    initTheme();
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+</script>
+</body>
+</html>

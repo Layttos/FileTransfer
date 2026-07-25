@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Se connecter | Administration</title>
+    <link rel="shortcut icon" href="../img/favicon.png" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        html[data-theme="light"] body { background-color: #f3f4f6 !important; color: #111827 !important; }
+        html[data-theme="dark"] body { background-color: #0f172a !important; color: #f8fafc !important; }
+        html[data-theme="light"] .login-card { background-color: #ffffff !important; }
+        html[data-theme="dark"] .login-card { background-color: #1f2937 !important; }
+        html[data-theme="light"] .login-title { color: #111827 !important; }
+        html[data-theme="dark"] .login-title { color: #f8fafc !important; }
+        html[data-theme="light"] .login-subtitle { color: #4b5563 !important; }
+        html[data-theme="dark"] .login-subtitle { color: #cbd5e1 !important; }
+        html[data-theme="light"] #username,
+        html[data-theme="light"] #password { background-color: #ffffff !important; color: #111827 !important; border-color: #d1d5db !important; }
+        html[data-theme="dark"] #username,
+        html[data-theme="dark"] #password { background-color: #111827 !important; color: #f8fafc !important; border-color: #4b5563 !important; }
+        html[data-theme="light"] #connect-msg { color: #dc2626 !important; }
+        html[data-theme="dark"] #connect-msg { color: #fca5a5 !important; }
+        html[data-theme="light"] #submit-btn { background-color: #4f46e5 !important; color: #ffffff !important; }
+        html[data-theme="dark"] #submit-btn { background-color: #818cf8 !important; color: #111827 !important; }
+        html[data-theme="light"] .login-footer { color: #111827 !important; }
+        html[data-theme="dark"] .login-footer { color: #f8fafc !important; }
+        html[data-theme="light"] #themeToggle { background-color: #000000 !important; color: #ffffff !important; }
+        html[data-theme="dark"] #themeToggle { background-color: #ffffff !important; color: #000000 !important; }
+    </style>
+
+</head>
+<body class="min-h-screen bg-gray-100 text-gray-900 transition-colors duration-200 dark:bg-gray-900 dark:text-gray-100">
+
+<button id="themeToggle" type="button" class="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-xl ring-1 ring-black/10 transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="Changer de thème" aria-pressed="false"></button>
+
+<div class="flex items-center justify-center min-h-screen px-6">
+    <div class="login-card w-full max-w-xl bg-white p-6 rounded-lg shadow-md dark:shadow-black/20">
+        <div class="text-center">
+            <p class="text-lg font-semibold text-indigo-600 dark:text-indigo-400">Administration | Gestion</p>
+            <h1 class="login-title mt-4 text-5xl md:text-5xl font-bold text-gray-900 dark:text-gray-100">Connexion</h1>
+            <span class="login-subtitle mt-6 text-2xl text-gray-600 dark:text-gray-300">Connectez-vous pour accéder au panneau d'administration.</span>
+            <div class="mt-11">
+                <form id="loginForm" class="flex flex-col items-center justify-center">
+                    <label for="username" class="sr-only">Nom d'utilisateur</label>
+                    <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            placeholder="Nom d'utilisateur"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
+                    >
+                    <label for="password" class="sr-only">Mot de passe</label>
+                    <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            placeholder="Mot de passe"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
+                    >
+                    <span id="connect-msg" class="text-sm mb-4 text-red-500 dark:text-red-400"></span>
+                    <button id="submit-btn" type="button" class="w-full rounded-md bg-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-md hover:cursor-pointer hover:bg-indigo-500 transition dark:hover:bg-indigo-400">
+                        Se connecter
+                    </button>
+                </form>
+            </div>
+            <span class="login-footer mt-6 text-sm font-semibold text-gray-900 dark:text-gray-100">©FileTransfer - Tous droits réservés</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    const THEME_KEY = 'ft-theme';
+
+    const moonIcon = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"></path>
+        </svg>`;
+
+    const sunIcon = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+        </svg>`;
+
+    function applyTheme(theme) {
+        const isDark = theme === 'dark';
+        document.documentElement.classList.toggle('dark', isDark);
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem(THEME_KEY, theme);
+        const button = document.getElementById('themeToggle');
+        if (button) {
+            button.innerHTML = isDark ? sunIcon : moonIcon;
+            button.setAttribute('aria-pressed', String(isDark));
+            button.setAttribute('aria-label', isDark ? 'Passer au thème clair' : 'Passer au thème sombre');
+            button.classList.remove('bg-black', 'text-white', 'bg-white', 'text-black');
+            button.classList.add(isDark ? 'bg-white' : 'bg-black', isDark ? 'text-black' : 'text-white');
+        }
+    }
+
+    function initTheme() {
+        const savedTheme = localStorage.getItem(THEME_KEY);
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        applyTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+    }
+
+    function toggleTheme() {
+        const isDark = document.documentElement.classList.contains('dark');
+        applyTheme(isDark ? 'light' : 'dark');
+    }
+
+    function setCookie(name, value, days) {
+        let expires = "";
+        if (days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/";
+    }
+
+    function getCookie(name) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for(let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
+        }
+        return null;
+    }
+
+    function eraseCookie(name) {
+        document.cookie = name + '=; Max-Age=-99999999; path=/';
+    }
+
+    initTheme();
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+    if(getCookie('admin_username') && getCookie('admin_password')) {
+        window.location.href = ``;
+    }
+
+    window.onload = function() {
+        const savedUsername = getCookie("admin_username");
+        const savedPassword = getCookie("admin_password");
+
+        if (savedUsername && savedPassword) {
+            document.getElementById('username').value = savedUsername;
+            document.getElementById('password').value = savedPassword;
+        }
+    }
+
+    document.addEventListener('keyup', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('submit-btn').click();
+        }
+    });
+
+    document.getElementById('submit-btn').onclick = function(e) {
+        e.preventDefault();
+
+        let username = document.getElementById('username').value;
+        let password = document.getElementById('password').value;
+        let connectMsg = document.getElementById('connect-msg');
+
+        connectMsg.textContent = '';
+
+        const user = encodeURIComponent(username);
+        const passwd = encodeURIComponent(password);
+
+        fetch(window.location.href + `?user=${user}&passwd=${passwd}`)
+            .then(res => {
+                if (res.ok) {
+                    return res.json().catch(() => ({ success: true }));
+                } else {
+                    return { message: 'USER_OR_PASSWORD_INCORRECT' };
+                }
+            })
+            .then(data => {
+                if(data.message === 'USER_OR_PASSWORD_INCORRECT') {
+                    connectMsg.innerHTML = "<span class='text-red-500'>Nom d'utilisateur ou mot de passe incorrect</span>";
+                    document.getElementById('username').classList.remove('border-gray-300');
+                    document.getElementById('username').classList.add('border-red-400');
+                    document.getElementById('username').classList.remove('focus:ring-indigo-500');
+                    document.getElementById('username').classList.add('focus:ring-red-600');
+
+                    document.getElementById('password').classList.remove('border-gray-300');
+                    document.getElementById('password').classList.add('border-red-400');
+                    document.getElementById('password').classList.remove('focus:ring-indigo-500');
+                    document.getElementById('password').classList.add('focus:ring-red-600');
+
+
+                    eraseCookie("admin_username");
+                    eraseCookie("admin_password");
+                } else if(data.message === 'CORRECT_CREDENTIALS'){
+                    connectMsg.innerHTML = "<span class='text-green-500'>Connexion réussie</span>";
+                    document.getElementById('username').classList.remove('border-gray-300');
+                    document.getElementById('username').classList.remove('border-red-400');
+                    document.getElementById('username').classList.remove('focus:ring-indigo-500');
+                    document.getElementById('username').classList.remove('focus:ring-red-600');
+
+                    document.getElementById('password').classList.remove('border-gray-300');
+                    document.getElementById('password').classList.remove('border-red-400');
+                    document.getElementById('password').classList.remove('focus:ring-indigo-500');
+                    document.getElementById('password').classList.remove('focus:ring-red-600');
+
+                    document.getElementById('username').classList.add('border-green-300');
+                    document.getElementById('username').classList.add('focus:ring-green-600');
+
+                    document.getElementById('password').classList.add('border-green-300');
+                    document.getElementById('password').classList.add('focus:ring-green-600');
+                    setCookie("admin_username", username, 30);
+                    setCookie("admin_password", password, 30);
+
+                    window.location.reload();
+                } else {
+                    connectMsg.innerHTML = `<span class='text-red-500'>${data.message}</span>`;
+                }
+            })
+            .catch(error => {
+                console.error("Erreur de connexion:", error);
+                connectMsg.textContent = 'Erreur de connexion au serveur';
+            });
+    }
+</script>
+
+</body>
+</html>
