@@ -8,6 +8,7 @@ import (
 	"fmt"
 	rnd "math/rand"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx"
@@ -55,12 +56,13 @@ func ReconnectDB() {
 	if connPool != nil {
 		return
 	}
+	port, _ := strconv.Atoi(os.Getenv("POSTGRESQL_PORT"))
 	credentials := Database{
-		Host:     "94.249.150.8",
-		Port:     5432,
-		Database: "files",
-		User:     "admin",
-		Password: "R:R#4^[2ed9TisT2",
+		Host:     os.Getenv("POSTGRESQL_HOST"),
+		Port:     port,
+		Database: os.Getenv("POSTGRESQL_DATABASE"),
+		User:     os.Getenv("POSTGRESQL_USER"),
+		Password: os.Getenv("POSTGRESQL_PASSWORD"),
 	}
 	ConnectPool(&credentials)
 }

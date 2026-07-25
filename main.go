@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx"
+	"github.com/joho/godotenv"
 )
 
 var (
@@ -14,6 +15,10 @@ var (
 )
 
 func main() {
+	err := godotenv.Load("./.env")
+	if err != nil {
+		fmt.Println("Error loading .env file")
+	}
 	fmt.Println("——— Starting File Transfer Backend server ———")
 	port := "3333"
 
