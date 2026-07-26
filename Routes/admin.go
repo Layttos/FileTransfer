@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 var RenameBody struct {
@@ -19,6 +20,7 @@ type rqBody struct {
 	FirstName  string `json:"firstName"`
 	LastName   string `json:"lastName"`
 	InviteCode string `json:"inviteCode"`
+	Token      string `json:"token"`
 	Action     string `json:"action"`
 	FileID     string `json:"fileID"`
 	NewName    string `json:"newFileName"`
@@ -148,8 +150,8 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			} else {
 				json.NewEncoder(w).Encode(`{"message": "FAILED_TO_CHANGE_FILE_ID"}`)
 			}
-			return
 
+			return
 		}
 	case "register":
 		{
@@ -191,10 +193,35 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			}
 
 			json.NewEncoder(w).Encode(`{"message": "USER_LOGGED_IN_SUCCESSFULLY", "token":"` + token + `"}`)
+			return
+		}
+	case "list_files":
+		{
+			if !postsql.AdminCheckCredentials(payload.Username, payload.Password) {
+				json.NewEncoder(w).Encode(`{"message": "The provided credentials are not valid"}`)
+				return
+			}
+
+			if req.URL.Query().Get("offset") == "" || req.URL.Query().Get("limit") == "" {
+				json.NewEncoder(w).Encode(`{"message": "MISSING_OFFSET_OR_LIMIT"}`)
+				return
+			}
+
+			offset, err1 := strconv.Atoi(req.URL.Query().Get("offset"))
+			limit, err2 := strconv.Atoi(req.URL.Query().Get("limit"))
+
+			if err1 != nil || err2 != nil {
+				json.NewEncoder(w).Encode(`{"message": "INVALID_OFFSET_OR_LIMIT"}`)
+				return
+			}
+
+			files := postsql.ListFiles(offset, limit)
+			json.NewEncoder(w).Encode(files)
+			return
 		}
 	default:
 		{
-			json.NewEncoder(w).Encode(`{"message": "The action you provided is not valid or empty"}`)
+			json.NewEncoder(w).Encode(`{"message": "NON_EXISTENT_ACTION"}`)
 		}
 		return
 	}

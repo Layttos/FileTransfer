@@ -45,4 +45,72 @@ Then you can access through: http://YOUR_SERVER_IP:3333/admin/register and creat
 10. Do whatever you want with the file then
 11. Oh and you can put a password to the file but I guess you already saw that... I hope.
 
+## IV. Stored data
+
+The files are stored unecrypted in the folder `./files/`.
+
+User data, file data... etc are stored in a PostgreSQL database.
+
+Here is the structure of the database:
+<table>
+    <thead>
+        <tr>
+            <th>file_transfer</th>
+            <th>users</th>
+            <th>admin_invitations</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>id <strong>— VARCHAR(6) PRIMARY KEY</strong></td>
+            <td>id <strong>— SERIAL PRIMARY KEY</strong></td>
+            <td>token <strong>— VARCHAR(255) NOT NULL</strong></td>
+        </tr>
+        <tr>
+            <td>file_name <strong>— VARCHAR(255) NOT NULL</strong></td>
+            <td>email_address <strong>— VARCHAR(255) NOT NULL</strong></td>
+            <td>token <strong>— VARCHAR(255) NOT NULL</strong></td>
+        </tr>
+        <tr>
+            <td>file_size <strong>— BIGINT NOT NULL</strong></td>
+            <td>last_name <strong>— VARCHAR(255) NOT NULL</strong></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>ip_addr <strong>— VARCHAR(45) NOT NULL</strong></td>
+            <td>first_name <strong>— VARCHAR(255) NOT NULL</strong></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>date <strong>— TIMESTAMP DEFAULT CURRENT_TIMESTAMP</strong></td>
+            <td>username <strong>— VARCHAR(255) NOT NULL</strong></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>has_passwd <strong>— BOOLEAN DEFAULT</strong></td>
+            <td>password <strong>— VARCHAR(255) NOT NULL</strong></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>xpasswd <strong>— CHAR(64)</strong></td>
+            <td>token <strong>— VARCHAR(255) NOT NULL</strong></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>salt_passwd <strong>— BYTEA</strong></td>
+            <td>confirmed <strong>— BOOLEAN DEFAULT FALSE</strong></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>id <strong>— VARCHAR(6) PRIMARY KEY</strong></td>
+            <td>invitation_used <strong>— VARCHAR(255) NOT NULL</strong></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>confirmation_code <strong>— VARCHAR(255) NOT NULL</strong></td>
+            <td></td>
+        </tr>
+    </tbody>
+</table>
 

@@ -470,6 +470,35 @@ func ChangeFileID(id string, new_id string) bool {
 	return true
 }
 
+func ListFiles(index, max int) []FileInfo {
+	ReconnectDB()
+	files := []FileInfo{}
+
+	rows, err := connPool.Query("SELECT id, file_name, file_size, ip_addr, date, has_passwd FROM file_transfer ORDER BY date DESC LIMIT $1 OFFSET $2;", max, index)
+	if err != nil {
+		manageErr(err)
+		return files
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var file FileInfo
+		err := rows.Scan(&file.ID, &file.FileName, &file.FileSize, &file.IPAddr, &file.Date, &file.HasPasswd)
+		if err != nil {
+			manageErr(err)
+			return files
+		}
+		files = append(files, file)
+	}
+
+	if err := rows.Err(); err != nil {
+		manageErr(err)
+		return files
+	}
+
+	return files
+}
+
 func DeleteFile(id string) bool {
 	ReconnectDB()
 	if Exists(id) == false {
