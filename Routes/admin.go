@@ -162,16 +162,35 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 				json.NewEncoder(w).Encode(`{"message": "USERNAME_OR_EMAIL_ALREADY_EXISTS"}`)
 				return
 			}
-
-			if !postsql.AdminRegisterUser(payload.FirstName, payload.LastName, payload.Username, payload.Email, payload.Password, payload.InviteCode) {
-				fmt.Println("ça a planté")
+			token, success := postsql.AdminRegisterUser(payload.FirstName, payload.LastName, payload.Username, payload.Email, payload.Password, payload.InviteCode)
+			if !success {
 				json.NewEncoder(w).Encode(`{"message": "USER_CREATION_FAILED"}`)
 				return
 			}
 			fmt.Println("User created successfully")
-			json.NewEncoder(w).Encode(`{"message": "USER_CREATED_SUCCESSFULLY"}`)
+
+			json.NewEncoder(w).Encode(`{"message": "USER_CREATED_SUCCESSFULLY", "token":"` + token + `"	}`)
 			return
 
+		}
+	case "login":
+		{
+			if payload.Username == "" || payload.Password == "" || payload.Email == "" {
+				json.NewEncoder(w).Encode(`{"message": "ONE_OR_MORE_FIELDS_ARE_EMPTY"}`)
+				return
+			}
+
+			if !postsql.AdminCheckCredentials(payload.Username, payload.Password) {
+				json.NewEncoder(w).Encode(`{"message": "USER_OR_PASSWORD_INCORRECT"}`)
+				return
+			}
+
+			token := postsql.AdminGetUserToken(payload.Username)
+			if token == "" {
+				token = postsql.AdminGetUserToken(payload.Email)
+			}
+
+			json.NewEncoder(w).Encode(`{"message": "USER_LOGGED_IN_SUCCESSFULLY", "token":"` + token + `"}`)
 		}
 	default:
 		{

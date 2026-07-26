@@ -290,17 +290,17 @@ func AdminCheckUserExistence(username string) bool {
 	return exists
 }
 
-func AdminRegisterUser(firstname string, lastname string, username string, email string, password string, invitation string) bool {
+func AdminRegisterUser(firstname string, lastname string, username string, email string, password string, invitation string) (string, bool) {
 	if password == "" || invitation == "" || firstname == "" || lastname == "" || username == "" {
-		return false
+		return "", false
 	}
 	ReconnectDB()
 	if AdminCheckUserExistence(username) == true {
-		return false
+		return "", false
 	}
 
 	if AdminCheckInvitation(invitation) == false {
-		return false
+		return "", false
 	}
 
 	// le truc en sha256 tout caca
@@ -321,22 +321,22 @@ func AdminRegisterUser(firstname string, lastname string, username string, email
 	token := make([]byte, 32)
 	if _, err := rand.Read(token); err != nil {
 		manageErr(err)
-		return false
+		return "", false
 	}
 
 	if !AdminUseInvitation(invitation) {
 		fmt.Println("An error occurred while trying to use the invitation")
-		return false
+		return "", false
 	}
 
 	_, err = connPool.Exec(`INSERT INTO users (first_name, last_name, username, email_address, invitation_used, password, confirmation_code, token) VALUES($1, $2, $3, $4, $5, $6, $7, $8);`, firstname, lastname, username, email, invitation, string(hashedPassword), hex.EncodeToString(confirmation_code), hex.EncodeToString(token))
 	if err != nil {
 		fmt.Println("An error occurred while attemping to create the account")
 		manageErr(err)
-		return false
+		return "", false
 	}
 
-	return true
+	return hex.EncodeToString(token), true
 
 }
 
@@ -435,6 +435,20 @@ func AdminCheckCredentials(username string, password string) bool {
 	err = bcrypt.CompareHashAndPassword([]byte(storedPassword), []byte(password))
 	return err == nil
 
+}
+
+func AdminGetUserToken(username string) string {
+	ReconnectDB()
+	token := ""
+	err := connPool.QueryRow("SELECT token FROM users WHERE username=$1;", username).Scan(&token)
+	if err != nil {
+		err = connPool.QueryRow("SELECT token FROM users WHERE email_address=$1;", username).Scan(&token)
+		if err != nil {
+			manageErr(err)
+			return ""
+		}
+	}
+	return token
 }
 
 func ChangeFileID(id string, new_id string) bool {
