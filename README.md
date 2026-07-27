@@ -1,5 +1,9 @@
 # FileTransfer
 
+> [!IMPORTANT]
+> This project is under the license **CC BY-NC-SA 4.0**.<br>
+> [![CC BY-NC-SA 4.0](https://mirrors.creativecommons.org/presskit/buttons/88x31/svg/by-nc-sa.svg)](http://creativecommons.org/licenses/by-nc-sa/4.0/)
+
 > [!CAUTION]
 >This project was strictly created by me and for my personal use with friends, to keep control of my own data.
 > This project has also seen the day because I wanted to send data with an unlimited size. Be strictly careful to who you share this to.
