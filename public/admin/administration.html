@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../css/tailwind.css">
     <link rel="shortcut icon" href="../img/favicon.png" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <title>Administration</title>
     <style>
         .logout-button {
@@ -13,6 +13,21 @@
             right: 20px;
             z-index: 100;
         }
+        .cell-truncate {
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .cell-truncate-id {
+            max-width: 90px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        th, td { padding: 6px 6px !important; font-size: 13px; }
+        #tableBody td { vertical-align: middle; }
+        .action-icon { display: inline-flex; align-items: center; }
     </style>
 </head>
 <body>
@@ -28,40 +43,25 @@
         </button>
     </div>
 
-    <div class="w-full max-w-5xl bg-white p-6 rounded-lg shadow-md overflow-y-auto max-h-[1000px]">
-        <table class="w-full table-fixed border border-gray-300 rounded-lg">
+    <div class="w-full max-w-4xl bg-white p-4 rounded-lg shadow-md">
+        <table class="w-full border border-gray-300 rounded-lg">
             <thead class="bg-gray-100">
             <tr>
-                <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600">Identifiants</th>
-                <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600">Nom du fichier</th>
-                <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600">Chemins d'accès</th>
-                <th class="px-6 py-3 text-center text-sm font-semibold text-gray-600">Taille</th>
-                <th class="px-6 py-3 text-center text-sm font-semibold text-gray-600">Actions réalistes</th>
+                <th class="text-left font-semibold text-gray-600">ID</th>
+                <th class="text-left font-semibold text-gray-600">Nom</th>
+                <th class="text-center font-semibold text-gray-600">IP</th>
+                <th class="text-center font-semibold text-gray-600">Date</th>
+                <th class="text-center font-semibold text-gray-600">Taille</th>
+                <th class="text-center font-semibold text-gray-600">Actions</th>
             </tr>
             </thead>
-            <tbody id="tableBody">
-            <!-- Les données seront injectées ici -->
-            </tbody>
+            <tbody id="tableBody"></tbody>
         </table>
         <div id="pagination" class="flex justify-center space-x-2 mt-4"></div>
     </div>
 </div>
 
-
 <script>
-
-    const mainURL = "https://file.titino.app"
-
-    function setCookie(name, value, days) {
-        let expires = "";
-        if (days) {
-            const date = new Date();
-            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-            expires = "; expires=" + date.toUTCString();
-        }
-        document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/";
-    }
-
     function getCookie(name) {
         const nameEQ = name + "=";
         const ca = document.cookie.split(';');
@@ -77,161 +77,212 @@
         document.cookie = name + '=; Max-Age=-99999999; path=/';
     }
 
-    function logout() {
+    function getResponseMessage(data) {
+        if (typeof data === 'string') {
+            try { const p = JSON.parse(data); return p.message || data; } catch { return data; }
+        }
+        if (data && typeof data.message === 'string') return data.message;
+        return '';
+    }
+
+    function formatSize(bytes) {
+        if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' Go';
+        if (bytes >= 1048576) return (bytes / 1048576).toFixed(2) + ' Mo';
+        if (bytes >= 1024) return (bytes / 1024).toFixed(2) + ' Ko';
+        return bytes + ' o';
+    }
+
+    function formatDate(value) {
+        if (!value) return '—';
+        try {
+            var d = new Date(value);
+            return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        } catch(e) { return value; }
+    }
+
+    const username = getCookie('admin_username');
+    const password = getCookie('admin_password');
+
+    if (!username || !password) {
+        window.location.href = '/admin/login';
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', function() {
         eraseCookie('admin_username');
         eraseCookie('admin_password');
-        window.location.href = mainURL;
-    }
-
-    document.getElementById('logoutBtn').addEventListener('click', logout);
-
-    if(!getCookie('admin_username') || !getCookie('admin_password')) {
-        window.location.href = mainURL;
-    }
-    let jsonData;
-
-    function renameIdentifierBox(identifier) {
-        const newName = prompt(`Nouvel identifiant pour ${identifier} : `);
-        if(newName) {
-            fetch(`${mainURL}/admin/api?rename=${identifier}&newName=${newName}`)
-                .then(response => {
-                    if(!response.ok) {
-                        throw console.log("Erreur lors de la récupération des données");
-                    }
-                    return response.json()
-                }).then(data => {
-                console.log(data);
-            }).catch(() => console.log("c'est la merde"));
-        }
-        setTimeout(() => {
-            window.location.reload(true);
-        }, 200);
-    }
-    function deleteRow(button) {
-        if(confirm("Êtes-vous sûr de vouloir supprimer ce fichier ?")) {
-            const identifier = button.closest("tr").querySelector("td").textContent;
-            fetch(`${mainURL}/admin/api?suppr=${identifier}`)
-                .then(response => {
-                    if(!response.ok) {
-                        throw console.log("Erreur lors de la récupération des données");
-                    }
-                    return response.json()
-                }).then(data => {
-                console.log(data);
-            }).catch(() => console.log("c'est la merde"));
-            setTimeout(() => {
-                window.location.reload(true);
-            }, 200);
-        }
-    }
-
-    document.addEventListener("DOMContentLoaded", function () {
-        const tableBody = document.getElementById("tableBody");
-        const paginationDiv = document.getElementById("pagination");
-        let jsonData = [];
-        let itemsPerPage = 10;
-        let currentPage = 1;
-
-        fetch(`${mainURL}admin/api?listFiles=true`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("Erreur lors de la récupération des données");
-                }
-                return response.json();
-            })
-            .then(data => {
-                jsonData = Object.values(data);
-                displayData();
-            })
-            .catch(() => console.log("Erreur lors du chargement des fichiers"));
-
-        function displayData() {
-            tableBody.innerHTML = "";
-
-            let start = (currentPage - 1) * itemsPerPage;
-            let end = start + itemsPerPage;
-            let displayedData = jsonData.slice(start, end);
-
-            displayedData.forEach(item => {
-                let row = document.createElement("tr");
-                row.classList.add("border-t", "border-gray-200");
-
-                row.innerHTML = `
-                <td class="px-6 py-4 text-gray-800">${item.identifier}</td>
-                <td class="px-6 py-4 text-gray-800">${item.filename}</td>
-                <td class="px-6 py-4 text-gray-800 truncate max-w-[300px]" title="${item.path.replaceAll("\\\\", "\\")}">${item.path.replaceAll("\\\\", "\\")}</td>
-                <td class="px-6 py-4 text-gray-800 text-center truncate max-w-[300px]">${item.size}</td>
-                <td class="px-6 py-4 text-center flex items-center justify-center space-x-4">
-                    <a href="http://localhost:3000/admin/api?download=${item.identifier}">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="text-gray-600 hover:underline hover:text-indigo-600" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                          <polyline points="7 10 12 15 17 10"/>
-                          <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                    </a>
-                    <a id="renameIdentifier" onclick="renameIdentifierBox('${item.identifier}')">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="text-gray-600 hover:underline hover:text-yellow-600" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M12 20h9"/>
-                          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                        </svg>
-                    </a>
-                    <a id="deleteIdentifier" onclick="deleteRow(this)">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="text-gray-900 hover:underline hover:text-red-600" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <line x1="18" y1="6" x2="6" y2="18"/>
-                          <line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                    </a>
-                </td>
-            `;
-
-                tableBody.appendChild(row);
-            });
-
-            updatePagination();
-        }
-
-        function updatePagination() {
-            paginationDiv.innerHTML = ""; // Effacer l'affichage actuel
-            let totalPages = Math.ceil(jsonData.length / itemsPerPage);
-
-            let prevButton = document.createElement("button");
-            prevButton.innerText = "Précédent";
-            prevButton.disabled = currentPage === 1;
-            prevButton.className = "px-3 py-2 bg-gray-300 rounded-md hover:bg-gray-400 transition";
-            prevButton.addEventListener("click", function () {
-                if (currentPage > 1) {
-                    currentPage--;
-                    displayData();
-                }
-            });
-            paginationDiv.appendChild(prevButton);
-
-            for (let i = 1; i <= totalPages; i++) {
-                let button = document.createElement("button");
-                button.innerText = i;
-                button.className = `px-3 py-2 rounded-md ${i === currentPage ? "bg-blue-500 text-white" : "bg-gray-300 hover:bg-gray-400 transition "}`;
-                button.addEventListener("click", function () {
-                    currentPage = i;
-                    displayData();
-                });
-
-                paginationDiv.appendChild(button);
-            }
-
-            let nextButton = document.createElement("button");
-            nextButton.innerText = "Suivant";
-            nextButton.disabled = currentPage === totalPages;
-            nextButton.className = "px-3 py-2 bg-gray-300 rounded-md hover:bg-gray-400 transition";
-            nextButton.addEventListener("click", function () {
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    displayData();
-                }
-            });
-            paginationDiv.appendChild(nextButton);
-        }
+        window.location.href = '/admin/login';
     });
 
+    let currentPage = 1;
+    const itemsPerPage = 10;
+
+    function fetchFiles(page) {
+        const offset = (page - 1) * itemsPerPage;
+        currentPage = page;
+
+        fetch('/admin/api?offset=' + offset + '&limit=' + itemsPerPage, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'list_files', username: username, password: password })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data && data.message) {
+                console.error(getResponseMessage(data));
+                return;
+            }
+            if (Array.isArray(data)) {
+                renderTable(data, page);
+            }
+        })
+        .catch(function(err) { console.error(err); });
+    }
+
+    function renderTable(files, page) {
+        var tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        files.forEach(function(item) {
+            var row = document.createElement('tr');
+            row.classList.add('border-t', 'border-gray-200');
+
+            row.innerHTML =
+                '<td class="text-gray-800 cell-truncate-id" title="' + escapeAttr(item.id) + '">' + escapeHtml(item.id) + '</td>' +
+                '<td class="text-gray-800 cell-truncate" title="' + escapeAttr(item.file_name) + '">' + escapeHtml(item.file_name) + '</td>' +
+                '<td class="text-gray-800 text-center">' + escapeHtml(item.ip_addr) + '</td>' +
+                '<td class="text-gray-800 text-center">' + formatDate(item.date) + '</td>' +
+                '<td class="text-gray-800 text-center">' + formatSize(item.file_size) + '</td>' +
+                '<td class="text-center whitespace-nowrap">' +
+                    '<a href="#" class="action-icon" onclick="event.preventDefault();downloadFile(\'' + item.id + '\')" title="Télécharger">' +
+                        '<svg xmlns="http://www.w3.org/2000/svg" class="text-gray-600 hover:text-indigo-600" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                          '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>' +
+                        '</svg>' +
+                    '</a>' +
+                    '<a href="#" class="action-icon" onclick="event.preventDefault();renameFile(\'' + item.id + '\')" title="Renommer">' +
+                        '<svg xmlns="http://www.w3.org/2000/svg" class="text-gray-600 hover:text-yellow-600" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                          '<path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.4 12.6a2 2 0 1 1 3 3L8 21l-4 1 1-4Z"/>' +
+                        '</svg>' +
+                    '</a>' +
+                    '<a href="#" class="action-icon" onclick="event.preventDefault();changeFileID(\'' + item.id + '\')" title="Changer l\'identifiant">' +
+                        '<svg xmlns="http://www.w3.org/2000/svg" class="text-gray-600 hover:text-blue-600" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                          '<path d="M16 10h2"/><path d="M16 14h2"/><path d="M6.17 15a3 3 0 0 1 5.66 0"/><circle cx="9" cy="11" r="2"/><rect x="2" y="5" width="20" height="14" rx="2"/>' +
+                        '</svg>' +
+                    '</a>' +
+                    '<a href="#" class="action-icon" onclick="event.preventDefault();deleteFile(\'' + item.id + '\')" title="Supprimer">' +
+                        '<svg xmlns="http://www.w3.org/2000/svg" class="text-gray-900 hover:text-red-600" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                          '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>' +
+                        '</svg>' +
+                    '</a>' +
+                '</td>';
+
+            tbody.appendChild(row);
+        });
+
+        renderPagination(files, page);
+    }
+
+    function renderPagination(files, page) {
+        var paginationDiv = document.getElementById('pagination');
+        paginationDiv.innerHTML = '';
+
+        var prevBtn = document.createElement('button');
+        prevBtn.textContent = 'Précédent';
+        prevBtn.className = 'px-4 py-2 bg-gray-300 rounded-md text-sm font-medium hover:bg-gray-400 transition' + (page <= 1 ? ' opacity-50 cursor-not-allowed' : ' cursor-pointer');
+        if (page > 1) {
+            prevBtn.addEventListener('click', function() { fetchFiles(page - 1); });
+        }
+        paginationDiv.appendChild(prevBtn);
+
+        var pageLabel = document.createElement('span');
+        pageLabel.className = 'px-4 py-2 text-sm text-gray-700 font-semibold';
+        pageLabel.textContent = 'Page ' + page;
+        paginationDiv.appendChild(pageLabel);
+
+        var nextBtn = document.createElement('button');
+        nextBtn.textContent = 'Suivant';
+        nextBtn.className = 'px-4 py-2 bg-gray-300 rounded-md text-sm font-medium hover:bg-gray-400 transition cursor-pointer';
+        nextBtn.addEventListener('click', function() { fetchFiles(page + 1); });
+        paginationDiv.appendChild(nextBtn);
+    }
+
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    function escapeAttr(str) {
+        return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function deleteFile(fileID) {
+        if (!confirm('Êtes-vous sûr de vouloir supprimer ce fichier ?')) return;
+        fetch('/admin/api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', username: username, password: password, fileID: fileID })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            console.log(getResponseMessage(data));
+            fetchFiles(currentPage);
+        })
+        .catch(function(err) { console.error(err); });
+    }
+
+    function renameFile(fileID) {
+        var newName = prompt('Nouveau nom pour le fichier ' + fileID + ' :');
+        if (!newName) return;
+        fetch('/admin/api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'rename', username: username, password: password, fileID: fileID, newFileName: newName })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            console.log(getResponseMessage(data));
+            fetchFiles(currentPage);
+        })
+        .catch(function(err) { console.error(err); });
+    }
+
+    function changeFileID(fileID) {
+        var newID = prompt('Nouvel identifiant pour ' + fileID + ' :');
+        if (!newID) return;
+        fetch('/admin/api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'change_id', username: username, password: password, fileID: fileID, newFileID: newID })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            console.log(getResponseMessage(data));
+            fetchFiles(currentPage);
+        })
+        .catch(function(err) { console.error(err); });
+    }
+
+    function downloadFile(fileID) {
+        fetch('/admin/api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'download', username: username, password: password, fileID: fileID })
+        })
+        .then(function(res) {
+            if (res.ok) {
+                window.location.href = '/admin/api?download=' + fileID;
+            } else {
+                res.json().then(function(data) {
+                    alert(getResponseMessage(data) || 'Erreur lors du téléchargement');
+                });
+            }
+        })
+        .catch(function(err) { console.error(err); });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchFiles(1);
+    });
 </script>
 </body>
 </html>

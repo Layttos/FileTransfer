@@ -32,7 +32,7 @@ func ChangeFileID(oldID string, newID string) error {
 }
 
 func DeleteFile(path string) error {
-	err := os.Remove(path)
+	err := os.RemoveAll(path)
 	if err != nil {
 		return fmt.Errorf("An error occurred while trying to delete the file: %v", err)
 	}

@@ -10,6 +10,12 @@ import (
 	"strconv"
 )
 
+func writeJSONMessage(w http.ResponseWriter, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": message})
+}
+
 var RenameBody struct {
 }
 
@@ -32,16 +38,12 @@ func HandleAdminLogin(w http.ResponseWriter, req *http.Request) {
 	admin_username, err := req.Cookie("admin_username")
 	admin_password, err1 := req.Cookie("admin_password")
 	if (err != nil && err1 == nil) || (err == nil && err1 != nil) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(`{"message": "USER_OR_PASSWORD_INCORRECT"}`)
+		writeJSONMessage(w, "USER_OR_PASSWORD_INCORRECT")
 	}
 
 	if admin_username != nil && admin_password != nil {
 		if postsql.AdminCheckCredentials(admin_username.Value, admin_password.Value) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(`{"message": "USER_ALREADY_LOGGED_IN"}`)
+			writeJSONMessage(w, "USER_ALREADY_LOGGED_IN")
 			http.ServeFile(w, req, "./public/admin/administration.html")
 			return
 		}
@@ -57,27 +59,18 @@ func HandleAdminRegister(w http.ResponseWriter, req *http.Request) {
 }
 
 func HandleAdmin(w http.ResponseWriter, req *http.Request) {
-	http.Redirect(w, req, "/admin/login", http.StatusSeeOther)
+	http.ServeFile(w, req, "./public/admin/administration.html")
 	return
 }
 
 func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
-	if len(req.URL.Query()) != 0 {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(`{"message": "TOO MANY ARGUMENTS"}`)
-		return
-	}
-
 	var payload rqBody
 
 	if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
-		json.NewEncoder(w).Encode(`{"message": "The request body is not valid JSON"}`)
+		writeJSONMessage(w, "The request body is not valid JSON")
 		return
 	}
 
-	fileID := req.URL.Query().Get("id")
-	fullPath := filepath.Join(`./files/`, fileID, postsql.GetFileName(fileID))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
@@ -90,7 +83,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			if !postsql.Exists(fileID) {
+			if !postsql.Exists(payload.FileID) {
 				json.NewEncoder(w).Encode(`{"message":"The ID you provided wasn't found'"}`)
 				return
 
@@ -98,7 +91,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 
 			postsql.DeleteFile(payload.FileID)
 			json.NewEncoder(w).Encode(`{"message": "Deleted file ID ''` + payload.FileID + `'"}`)
-			break
+			return
 		}
 
 	case "rename":
@@ -108,21 +101,24 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			if !postsql.Exists(fileID) {
+			if !postsql.Exists(payload.FileID) {
 				json.NewEncoder(w).Encode(`{"message":"The ID you provided wasn't found'"}`)
 				return
 
 			}
+
+			fullPath := filepath.Join("./files", payload.FileID, postsql.GetFileName(payload.FileID))
+			fmt.Println("[RENAME] Full path:", fullPath)
 
 			if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 				json.NewEncoder(w).Encode(`{"message": "Somehow the ID was found but not the file"}`)
 				return
 			}
 
-			if postsql.RenameFile(fileID, payload.NewName) {
-				json.NewEncoder(w).Encode(`{"message": "FILE_RENAMED_SUCCESSFULLY"}`)
+			if postsql.RenameFile(payload.FileID, payload.NewName) {
+				writeJSONMessage(w, "FILE_RENAMED_SUCCESSFULLY")
 			} else {
-				json.NewEncoder(w).Encode(`{"message": "FAILED_TO_RENAME_FILE"}`)
+				writeJSONMessage(w, "FAILED_TO_RENAME_FILE")
 			}
 			return
 
@@ -134,21 +130,23 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			if !postsql.Exists(fileID) {
+			if !postsql.Exists(payload.FileID) {
 				json.NewEncoder(w).Encode(`{"message":"The ID you provided wasn't found'"}`)
 				return
 
 			}
+
+			fullPath := filepath.Join("./files", payload.FileID, postsql.GetFileName(payload.FileID))
 
 			if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 				json.NewEncoder(w).Encode(`{"message": "Somehow the ID was found but not the file"}`)
 				return
 			}
 
-			if postsql.ChangeFileID(fileID, payload.NewFileID) {
-				json.NewEncoder(w).Encode(`{"message": "FILE_ID_CHANGED_SUCCESSFULLY"}`)
+			if postsql.ChangeFileID(payload.FileID, payload.NewFileID) {
+				writeJSONMessage(w, "FILE_ID_CHANGED_SUCCESSFULLY")
 			} else {
-				json.NewEncoder(w).Encode(`{"message": "FAILED_TO_CHANGE_FILE_ID"}`)
+				writeJSONMessage(w, "FAILED_TO_CHANGE_FILE_ID")
 			}
 
 			return
@@ -161,12 +159,12 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			}
 
 			if postsql.AdminCheckUserExistence(payload.Username) {
-				json.NewEncoder(w).Encode(`{"message": "USERNAME_OR_EMAIL_ALREADY_EXISTS"}`)
+				writeJSONMessage(w, "USERNAME_OR_EMAIL_ALREADY_EXISTS")
 				return
 			}
 			token, success := postsql.AdminRegisterUser(payload.FirstName, payload.LastName, payload.Username, payload.Email, payload.Password, payload.InviteCode)
 			if !success {
-				json.NewEncoder(w).Encode(`{"message": "USER_CREATION_FAILED"}`)
+				writeJSONMessage(w, "USER_CREATION_FAILED")
 				return
 			}
 			fmt.Println("User created successfully")
@@ -183,7 +181,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			}
 
 			if !postsql.AdminCheckCredentials(payload.Username, payload.Password) {
-				json.NewEncoder(w).Encode(`{"message": "USER_OR_PASSWORD_INCORRECT"}`)
+				writeJSONMessage(w, "USER_OR_PASSWORD_INCORRECT")
 				return
 			}
 
@@ -192,7 +190,9 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 				token = postsql.AdminGetUserToken(payload.Email)
 			}
 
-			json.NewEncoder(w).Encode(`{"message": "USER_LOGGED_IN_SUCCESSFULLY", "token":"` + token + `"}`)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]string{"message": "USER_LOGGED_IN_SUCCESSFULLY", "token": token})
 			return
 		}
 	case "list_files":
@@ -203,7 +203,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			}
 
 			if req.URL.Query().Get("offset") == "" || req.URL.Query().Get("limit") == "" {
-				json.NewEncoder(w).Encode(`{"message": "MISSING_OFFSET_OR_LIMIT"}`)
+				writeJSONMessage(w, "MISSING_OFFSET_OR_LIMIT")
 				return
 			}
 
@@ -211,7 +211,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			limit, err2 := strconv.Atoi(req.URL.Query().Get("limit"))
 
 			if err1 != nil || err2 != nil {
-				json.NewEncoder(w).Encode(`{"message": "INVALID_OFFSET_OR_LIMIT"}`)
+				writeJSONMessage(w, "INVALID_OFFSET_OR_LIMIT")
 				return
 			}
 
@@ -219,9 +219,34 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			json.NewEncoder(w).Encode(files)
 			return
 		}
+	case "download":
+		{
+			if !postsql.AdminCheckCredentials(payload.Username, payload.Password) {
+				json.NewEncoder(w).Encode(`{"message": "The provided credentials are not valid"}`)
+				return
+			}
+
+			if !postsql.Exists(payload.FileID) {
+				json.NewEncoder(w).Encode(`{"message":"The ID you provided wasn't found'"}`)
+				return
+			}
+
+			fullPath := filepath.Join("./files", payload.FileID, postsql.GetFileName(payload.FileID))
+
+			if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+				json.NewEncoder(w).Encode(`{"message": "Somehow the ID was found but not the file"}`)
+				return
+			}
+
+			w.Header().Set("Content-Disposition", "attachment; filename=\""+postsql.GetFileName(payload.FileID)+"\"")
+			w.Header().Set("Content-Type", "application/octet-stream")
+			http.ServeFile(w, req, fullPath)
+			return
+
+		}
 	default:
 		{
-			json.NewEncoder(w).Encode(`{"message": "NON_EXISTENT_ACTION"}`)
+			writeJSONMessage(w, "NON_EXISTENT_ACTION")
 		}
 		return
 	}

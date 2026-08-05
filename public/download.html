@@ -194,22 +194,6 @@
             });
     };
 
-    // Initial setup
-    function updateDownloadButton() {
-        if (passwordInput.value.trim() !== '') {
-            downloadBtn.onclick = function() {
-                const password = passwordInput.value;
-                window.location.href = url + `?download=true&password=${password}`;
-            };
-        } else {
-            downloadBtn.onclick = function() {
-                window.location.href = url + `?download=true`;
-            };
-        }
-    }
-
-    passwordInput.addEventListener('input', updateDownloadButton);
-    updateDownloadButton();
 </script>
 
 </body>

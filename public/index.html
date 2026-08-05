@@ -25,8 +25,8 @@
         html[data-theme="dark"] #progressContainer > div { background-color: #374151 !important; }
         html[data-theme="light"] #progressText { color: #4b5563 !important; }
         html[data-theme="dark"] #progressText { color: #cbd5e1 !important; }
-        html[data-theme="light"] #fileName { color: #2563eb !important; }
-        html[data-theme="dark"] #fileName { color: #60a5fa !important; }
+        html[data-theme="light"] .file-item { color: #2563eb !important; }
+        html[data-theme="dark"] .file-item { color: #60a5fa !important; }
         html[data-theme="light"] #message { color: #374151 !important; }
         html[data-theme="dark"] #message { color: #d1d5db !important; }
         html[data-theme="light"] footer { color: #6b7280 !important; }
@@ -41,12 +41,12 @@
 <button id="themeToggle" type="button" class="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-xl ring-1 ring-black/10 transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="Changer de thème" aria-pressed="false"></button>
 
 <!-- Contenu principal -->
-<main class="flex-grow flex items-center justify-center">
-    <form id="uploadMain" class="">
+<main class="flex-grow flex items-center justify-center relative border-4 border-transparent transition-colors duration-300" id="dropZone">
+    <form id="uploadMain" class="w-full max-w-xl px-6">
         <div class="text-center">
             <p class="text-lg font-semibold text-indigo-600 dark:text-indigo-400">TeanoLink | Layttos</p>
-            <h1 class="mt-4 text-4xl md:text-5xl font-bold text-gray-900 dark:text-gray-100">Téléverser un fichier</h1>
-            <span class="mt-6 text-2xl text-gray-600 dark:text-gray-300">Recherchez votre fichier et cliquez sur "Téléverser".</span>
+            <h1 class="mt-4 text-4xl md:text-5xl font-bold text-gray-900 dark:text-gray-100">Téléverser des fichiers</h1>
+            <span class="mt-6 text-xl md:text-1xl text-gray-600 dark:text-gray-300">Recherchez vos fichiers, puis cliquez sur "Téléverser les fichiers".</span>
             <div class="mt-5 space-y-4">
                 <div class="mt-6">
                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Laissez vide si vous ne souhaitez pas de protection</p>
@@ -55,27 +55,31 @@
                             type="password"
                             id="password"
                             name="password"
-                            placeholder="Protégez votre fichier avec un mot de passe"
+                            placeholder="Protégez vos fichiers avec un mot de passe"
                             class="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
                     >
                 </div>
-                <input type="file" name="file" id="file" class="hidden" required>
+                <input type="file" name="file" id="file" class="hidden" multiple required>
                 <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
                     <label for="file" class="w-full sm:w-auto rounded-md bg-gray-600 px-6 py-3 text-base font-semibold text-white shadow-md hover:bg-zinc-500 hover:cursor-pointer transition dark:bg-gray-700 dark:hover:bg-gray-600">
-                        Choisir un fichier <span aria-hidden="true">&rarr;</span>
+                        Choisir des fichiers <span aria-hidden="true">&rarr;</span>
                     </label>
-                    <button type="submit" class="w-full sm:w-auto rounded-md bg-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-md hover:cursor-pointer hover:bg-indigo-500 transition">
-                        Téléverser le fichier
+                    <button type="submit" id="submitBtn" class="w-full sm:w-auto rounded-md bg-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-md hover:cursor-pointer hover:bg-indigo-500 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        Téléverser les fichiers
                     </button>
                 </div>
+                
                 <div id="progressContainer" class="mt-4 hidden">
                     <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                        <div id="progressBar" class="bg-indigo-600 h-2.5 rounded-full" style="width: 0"></div>
+                        <div id="progressBar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-300" style="width: 0"></div>
                     </div>
-                    <p id="progressText" class="text-sm text-gray-600 mt-2 dark:text-gray-300">Téléchargement : 0%</p>
+                    <p id="progressText" class="text-sm text-gray-600 mt-2 dark:text-gray-300">Téléversement : 0%</p>
                 </div>
+                
+                <!-- Zone pour les fichiers ajoutés (juste en dessous de la barre de progression) -->
+                <div id="fileList" class="mt-4 flex flex-col gap-2 w-full text-left max-h-64 overflow-y-auto pr-1"></div>
+                
                 <div class="mt-4">
-                    <p id="fileName" class="text-base text-blue-600 dark:text-blue-400"></p>
                     <p id="message" class="text-base text-gray-700 dark:text-gray-300"></p>
                 </div>
             </div>
@@ -86,7 +90,6 @@
 <footer class="text-center text-gray-500 mt-auto py-4 dark:text-gray-400">
     FTransfer - Version 2.0
 </footer>
-
 
 <script>
     const THEME_KEY = 'ft-theme';
@@ -135,84 +138,192 @@
         applyTheme(isDark ? 'light' : 'dark');
     }
 
-    let fileToUpload = null;
-
     initTheme();
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 
+    // --- Gestion des fichiers multiples et glisser-déposer ---
+    
+    let filesToUpload = [];
+    const fileInput = document.getElementById('file');
+    const fileListContainer = document.getElementById('fileList');
+    const dropZone = document.getElementById('dropZone');
+    
+    function updateFileList() {
+        fileListContainer.innerHTML = '';
+        filesToUpload.forEach((file, index) => {
+            const item = document.createElement('div');
+            item.className = "flex justify-between items-center bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-200 dark:border-gray-700 shadow-sm text-sm";
+            item.id = 'file-item-' + index;
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.className = "file-item truncate w-[75%] sm:w-[80%]";
+            nameSpan.textContent = file.name;
+            
+            const actionDiv = document.createElement('div');
+            actionDiv.className = "flex items-center gap-2";
+            actionDiv.id = 'file-action-' + index;
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.type = "button";
+            removeBtn.innerHTML = "&times;";
+            removeBtn.className = "text-red-500 hover:text-red-700 font-bold px-2 text-lg";
+            removeBtn.onclick = () => {
+                filesToUpload.splice(index, 1);
+                updateFileList();
+                if(filesToUpload.length === 0) {
+                    fileInput.value = "";
+                    fileInput.setAttribute('required', 'required');
+                }
+            };
+            
+            actionDiv.appendChild(removeBtn);
+            item.appendChild(nameSpan);
+            item.appendChild(actionDiv);
+            fileListContainer.appendChild(item);
+        });
+    }
+
+    function handleFilesAdded(newFiles) {
+        for (let i = 0; i < newFiles.length; i++) {
+            filesToUpload.push(newFiles[i]);
+        }
+        updateFileList();
+        if (filesToUpload.length > 0) {
+            fileInput.removeAttribute('required');
+        }
+    }
+
+    fileInput.addEventListener('change', function() {
+        if(this.files.length > 0) {
+            handleFilesAdded(this.files);
+        }
+    });
+
     document.addEventListener('dragover', (e) => {
         e.preventDefault();
+        dropZone.classList.add('border-indigo-500', 'bg-indigo-50/50', 'dark:bg-indigo-950/20');
+    });
+
+    document.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/50', 'dark:bg-indigo-950/20');
     });
 
     document.addEventListener('drop', (e) => {
         e.preventDefault();
+        dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/50', 'dark:bg-indigo-950/20');
         const files = e.dataTransfer.files;
         if (files.length) {
-            fileToUpload = files[0];
-            document.getElementById('fileName').textContent = "Fichier sélectionné : " + files[0].name;
+            handleFilesAdded(files);
         }
     });
 
-    document.getElementById('file').addEventListener('change', function() {
-        const fileName = this.files[0].name;
-        fileToUpload = this.files[0];
-        document.getElementById('fileName').textContent = "Fichier sélectionné : " + fileName;
-    });
-    document.getElementById('uploadMain').addEventListener('submit', function(e) {
-        e.preventDefault();
+    // Upload asynchrone unitaire
+    function uploadSingleFile(file, password, onProgress) {
+        return new Promise((resolve, reject) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('password', password);
 
-        const file = fileToUpload;
+            const xhr = new XMLHttpRequest();
+            let url = window.location.href + "upload";
+            if(password.trim() !== '') {
+                url += `?password=${password}`;
+            }
+            xhr.open('POST', url, true);
+
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    onProgress(e.loaded);
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    try {
+                        resolve(JSON.parse(xhr.responseText));
+                    } catch(err) {
+                        reject('Erreur de réponse');
+                    }
+                } else {
+                    reject('Erreur serveur');
+                }
+            };
+
+            xhr.onerror = function() {
+                reject('Erreur réseau');
+            };
+
+            xhr.send(formData);
+        });
+    }
+
+    document.getElementById('uploadMain').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        if (filesToUpload.length === 0) {
+            document.getElementById('message').innerHTML = '<span class="text-red-500 dark:text-red-400">Veuillez sélectionner au moins un fichier.</span>';
+            return;
+        }
+
         const password = document.getElementById('password').value;
         const progressContainer = document.getElementById('progressContainer');
         const progressBar = document.getElementById('progressBar');
         const progressText = document.getElementById('progressText');
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('password', password);
+        const submitBtn = document.getElementById('submitBtn');
 
         progressContainer.classList.remove('hidden');
         progressBar.style.width = '0%';
-        progressText.textContent = 'Téléchargement : 0%';
+        progressText.textContent = 'Téléversement : 0%';
+        submitBtn.disabled = true;
+        document.getElementById('message').innerHTML = '';
 
-        const xhr = new XMLHttpRequest();
-        let url = window.location.href + "upload";
-        if(password.trim() !== '') {
-            url += `?password=${password}`;
-        }
-        xhr.open('POST', url, true);
+        let totalSize = filesToUpload.reduce((acc, f) => acc + f.size, 0);
+        let globalLoaded = 0;
+        let hasError = false;
 
-        xhr.upload.onprogress = function(e) {
-            if (e.lengthComputable) {
-                const percentComplete = Math.round((e.loaded / e.total) * 100);
-                progressBar.style.width = percentComplete + '%';
-                progressText.textContent = `Téléchargement : ${percentComplete}%`;
-            }
-        };
+        for (let i = 0; i < filesToUpload.length; i++) {
+            const file = filesToUpload[i];
+            const actionDiv = document.getElementById('file-action-' + i);
+            
+            actionDiv.innerHTML = '<span class="text-xs text-indigo-500 animate-pulse">En cours...</span>';
 
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                const data = JSON.parse(xhr.responseText);
-                const downloadLink = window.location.href + data.id;
-                document.getElementById('message').innerHTML =
-                    `<span class="inline-flex items-center gap-2 text-green-500 dark:text-green-400">Votre fichier est téléversé : <a class="break-all underline underline-offset-2" href="${downloadLink}">${downloadLink}</a><button type="button" id="copyLinkBtn" class="rounded-md border border-green-500 px-2 py-1 text-xs font-semibold text-green-600 transition hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-950" aria-label="Copier le lien">Copier</button></span>`;
-                document.getElementById('copyLinkBtn').addEventListener('click', function() {
-                    navigator.clipboard.writeText(downloadLink);
+            try {
+                const data = await uploadSingleFile(file, password, (loaded) => {
+                    const currentTotalLoaded = globalLoaded + loaded;
+                    const percentComplete = Math.round((currentTotalLoaded / totalSize) * 100);
+                    progressBar.style.width = percentComplete + '%';
+                    progressText.textContent = `Téléversement : ${percentComplete}%`;
                 });
-                progressBar.style.width = '100%';
-                progressText.textContent = 'Téléchargement terminé';
-            } else {
-                document.getElementById('message').innerHTML =
-                    '<span class="text-red-500 dark:text-red-400">Une erreur est survenue lors du téléversement</span>';
+                
+                globalLoaded += file.size;
+
+                const downloadLink = window.location.href + data.id;
+                actionDiv.innerHTML = `
+                    <a class="text-green-500 underline text-xs truncate max-w-[90px] sm:max-w-[150px]" href="${downloadLink}" target="_blank">${data.id}</a>
+                    <button type="button" class="copy-btn rounded-md border border-green-500 px-2 py-1 text-xs font-semibold text-green-600 transition hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-950" data-link="${downloadLink}">Copier</button>
+                `;
+            } catch (error) {
+                hasError = true;
+                actionDiv.innerHTML = '<span class="text-xs text-red-500">Échec</span>';
             }
-        };
+        }
 
-        xhr.onerror = function() {
-            document.getElementById('message').innerHTML =
-                '<span class="text-red-500 dark:text-red-400">Une erreur est survenue lors du téléversement</span>';
-        };
-
-        xhr.send(formData);
+        progressText.textContent = hasError ? 'Terminé avec des erreurs' : 'Téléversement terminé avec succès !';
+        progressBar.style.width = '100%';
+        submitBtn.disabled = false;
+        
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                navigator.clipboard.writeText(this.getAttribute('data-link'));
+                const originalText = this.textContent;
+                this.textContent = 'Copié !';
+                setTimeout(() => { this.textContent = originalText; }, 2000);
+            });
+        });
+        
+        filesToUpload = [];
+        fileInput.value = "";
     });
 </script>
 </body>

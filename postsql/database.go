@@ -197,6 +197,7 @@ func Exists(id string) bool {
 
 	err := connPool.QueryRow("SELECT 1 FROM file_transfer WHERE id=$1;", id).Scan(&exists)
 	if err != nil {
+		fmt.Println("return false")
 		return false
 	}
 	return true
@@ -457,7 +458,7 @@ func ChangeFileID(id string, new_id string) bool {
 		return false
 	}
 
-	err := connPool.QueryRow("UPDATE file_transfer SET id=$1 WHERE id=$2;", new_id, id).Scan()
+	_, err := connPool.Exec("UPDATE file_transfer SET id=$1 WHERE id=$2;", new_id, id)
 	if err != nil {
 		manageErr(err)
 		return false
@@ -505,13 +506,13 @@ func DeleteFile(id string) bool {
 		return false
 	}
 
-	err := connPool.QueryRow("DELETE FROM file_transfer WHERE id=$1;", id).Scan()
-	if err != nil {
-		manageErr(err)
+	if fmgr.DeleteFile("./files/"+id) != nil {
 		return false
 	}
 
-	if fmgr.DeleteFile("./files/"+id) != nil {
+	_, err := connPool.Exec("DELETE FROM file_transfer WHERE id=$1;", id)
+	if err != nil {
+		manageErr(err)
 		return false
 	}
 
@@ -524,16 +525,18 @@ func RenameFile(id, new_name string) bool {
 		return false
 	}
 
-	_, err := connPool.Exec("UPDATE file_transfer SET file_name=$1 WHERE id=$2;", new_name, id)
-	if err != nil {
-		manageErr(err)
-		return false
-	}
-
+	fmt.Println("[RENAME] (Previous) Full path:", "./files/"+id+"/"+GetFileName(id))
+	fmt.Println("[RENAME] (New) Full path:", "./files/"+id+"/"+new_name)
 	old_path := "./files/" + id + "/" + GetFileName(id)
 	new_path := "./files/" + id + "/" + new_name
 
 	if fmgr.RenameFile(old_path, new_path) != nil {
+		return false
+	}
+
+	_, err := connPool.Exec("UPDATE file_transfer SET file_name=$1 WHERE id=$2;", new_name, id)
+	if err != nil {
+		manageErr(err)
 		return false
 	}
 
