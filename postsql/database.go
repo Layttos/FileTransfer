@@ -506,7 +506,7 @@ func DeleteFile(id string) bool {
 		return false
 	}
 
-	if fmgr.DeleteFile(os.Getenv("FILES_PATH")+"/" + +id) != nil {
+	if fmgr.DeleteFile(os.Getenv("FILES_PATH")+"/"+id) != nil {
 		return false
 	}
 
@@ -525,10 +525,10 @@ func RenameFile(id, new_name string) bool {
 		return false
 	}
 
-	fmt.Println("[RENAME] (Previous) Full path:", os.Getenv("FILES_PATH")+"/" + +id + "/" + GetFileName(id))
-	fmt.Println("[RENAME] (New) Full path:", os.Getenv("FILES_PATH")+"/" + +id + "/" + new_name)
-	old_path := os.Getenv("FILES_PATH") + "/" + +id + "/" + GetFileName(id)
-	new_path := os.Getenv("FILES_PATH") + "/" + +id + "/" + new_name
+	fmt.Println("[RENAME] (Previous) Full path:", os.Getenv("FILES_PATH")+"/"+id+"/"+GetFileName(id))
+	fmt.Println("[RENAME] (New) Full path:", os.Getenv("FILES_PATH")+"/"+id+"/"+new_name)
+	old_path := os.Getenv("FILES_PATH") + "/" + id + "/" + GetFileName(id)
+	new_path := os.Getenv("FILES_PATH") + "/" + id + "/" + new_name
 
 	if fmgr.RenameFile(old_path, new_path) != nil {
 		return false
