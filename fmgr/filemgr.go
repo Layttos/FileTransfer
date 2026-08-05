@@ -20,8 +20,8 @@ func CreateNewFile(path string, psw string) {
 }
 
 func ChangeFileID(oldID string, newID string) error {
-	oldPath := "./files/" + oldID
-	newPath := "./files/" + newID
+	oldPath := os.Getenv("FILES_PATH") + "/" + +oldID
+	newPath := os.Getenv("FILES_PATH") + "/" + +newID
 
 	err := os.Rename(oldPath, newPath)
 	if err != nil {

@@ -107,7 +107,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 
 			}
 
-			fullPath := filepath.Join("./files", payload.FileID, postsql.GetFileName(payload.FileID))
+			fullPath := filepath.Join(os.Getenv("FILES_PATH"), payload.FileID, postsql.GetFileName(payload.FileID))
 			fmt.Println("[RENAME] Full path:", fullPath)
 
 			if _, err := os.Stat(fullPath); os.IsNotExist(err) {
@@ -136,7 +136,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 
 			}
 
-			fullPath := filepath.Join("./files", payload.FileID, postsql.GetFileName(payload.FileID))
+			fullPath := filepath.Join(os.Getenv("FILES_PATH"), payload.FileID, postsql.GetFileName(payload.FileID))
 
 			if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 				json.NewEncoder(w).Encode(`{"message": "Somehow the ID was found but not the file"}`)
@@ -231,7 +231,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			fullPath := filepath.Join("./files", payload.FileID, postsql.GetFileName(payload.FileID))
+			fullPath := filepath.Join(os.Getenv("FILES_PATH"), payload.FileID, postsql.GetFileName(payload.FileID))
 
 			if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 				json.NewEncoder(w).Encode(`{"message": "Somehow the ID was found but not the file"}`)

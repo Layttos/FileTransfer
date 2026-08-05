@@ -52,7 +52,7 @@ func HandleUpload(w http.ResponseWriter, rq *http.Request) {
 				continue
 			}
 
-			tmpDirPath, err := os.MkdirTemp("./files", "upload-")
+			tmpDirPath, err := os.MkdirTemp(os.Getenv("FILES_PATH"), "upload-")
 			if err != nil {
 				part.Close()
 				http.Error(w, `{"error": "Server error creating temporary directory"}`, http.StatusInternalServerError)
@@ -105,7 +105,7 @@ func HandleUpload(w http.ResponseWriter, rq *http.Request) {
 				return
 			}
 
-			finalDirPath := filepath.Join("./files", id)
+			finalDirPath := filepath.Join(os.Getenv("FILES_PATH"), id)
 			if err := os.Rename(tmpDirPath, finalDirPath); err != nil {
 				_ = postsql.DeleteFile(id)
 				os.RemoveAll(tmpDirPath)

@@ -5,6 +5,7 @@ import (
 	"filetransfer-backend/postsql"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -59,7 +60,7 @@ func HandleFile(w http.ResponseWriter, req *http.Request) {
 				}
 			}
 
-			fullPath := filepath.Join("./files", id, postsql.GetFileName(id))
+			fullPath := filepath.Join(os.Getenv("FILES_PATH"), id, postsql.GetFileName(id))
 			if isDownload {
 				w.Header().Set("Content-Disposition", "attachment; filename=\""+postsql.GetFileName(id)+"\"")
 				w.Header().Set("Content-Type", "application/octet-stream")

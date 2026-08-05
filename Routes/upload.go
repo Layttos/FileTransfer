@@ -48,7 +48,7 @@ func HandleUpload(w http.ResponseWriter, rq *http.Request) {
 
 			id := postsql.GenFileID()
 
-			dirPath := filepath.Join("./files", id)
+			dirPath := filepath.Join(os.Getenv("FILES_PATH"), id)
 			if err := os.MkdirAll(dirPath, 0755); err != nil {
 				http.Error(w, `{"error": "Server error creating directory"}`, http.StatusInternalServerError)
 				return
