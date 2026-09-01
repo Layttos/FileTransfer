@@ -86,8 +86,17 @@ func ConnectPool(db *Database) {
 		AcquireTimeout: 30 * time.Second,
 	}
 
+	// Au premier demarrage, PostgreSQL peut encore etre en cours d'initialisation.
+	// On retente pendant ~60s au lieu de faire crasher le conteneur immediatement.
 	var err error
-	connPool, err = pgx.NewConnPool(poolCfg)
+	for attempt := 1; attempt <= 30; attempt++ {
+		connPool, err = pgx.NewConnPool(poolCfg)
+		if err == nil {
+			break
+		}
+		fmt.Printf("PostgreSQL pas encore disponible (tentative %d/30) : %v\n", attempt, err)
+		time.Sleep(2 * time.Second)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Erreur de connexion à PostgreSQL : %v\n", err)
 		os.Exit(1)
@@ -395,7 +404,11 @@ func AdminCheckInvitation(invitation string) bool {
 
 	err := connPool.QueryRow("SELECT token, used FROM admin_invitations WHERE token=$1;", invitation).Scan(&token, &used)
 	if err != nil {
-		manageErr(err)
+		// Un code inexistant n'est pas une erreur serveur : on refuse l'invitation
+		// sans arreter le processus (manageErr appelle os.Exit).
+		if err != pgx.ErrNoRows {
+			fmt.Fprintf(os.Stderr, "Verification de l'invitation impossible : %v\n", err)
+		}
 		return false
 	}
 

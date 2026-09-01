@@ -1,6 +1,19 @@
-files/*
+# Secrets & configuration locale
 .env
-.DS_Store
 .env-PROD
+.env.local
+docker-compose.override.yml
+
+# Fichiers envoyés par les utilisateurs
+uploads/
+files/
+
+# Binaires Go
+server
+filetransfer-backend
+*.exe
+
+# Divers
+.DS_Store
 FileTransfer.zip
 Routes/admin_test.go

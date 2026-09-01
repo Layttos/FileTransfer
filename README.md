@@ -15,25 +15,89 @@
 
 # I. How to setup
 
-Pre-requirements:
-```
-1. PostgreSQL server
-2. Go 1.26.2 or higher
+Only requirement: **Docker** (with the Compose plugin).
+
+```bash
+git clone https://github.com/Layttos/FileTransfer.git
+cd FileTransfer
+docker compose up -d
 ```
 
-1. Create the .env file
-2. Put your PostgreSQL credentials
+That's it. Compose builds the app, starts a PostgreSQL database next to it, creates
+the tables and exposes everything on <http://localhost:3333>.
+
+Nothing to configure: no `.env` is required. If you want to change the port, the
+database credentials or the timezone, copy `.env.example` to `.env` and edit it
+**before** the first `docker compose up`.
+
+Useful commands:
+
+```bash
+docker compose logs -f filetransfer   # follow the logs
+docker compose down                   # stop (keeps files and database)
+docker compose down -v                # stop and ERASE the database
+```
+
+Uploaded files land in `./uploads/` on the host, the database lives in the
+`db-data` Docker volume. Both survive `docker compose down` and rebuilds.
+
+### Behind a reverse proxy, or with your own PostgreSQL
+
+Copy `docker-compose.override.yml.example` to `docker-compose.override.yml`; Compose
+merges it automatically. It covers two cases:
+
+- **reverse proxy** (Nginx Proxy Manager, Traefik, Caddy): stop publishing the port
+  and join your proxy network instead;
+- **existing PostgreSQL**: set `POSTGRESQL_HOST` in your `.env` and skip the bundled
+  database. The bundled service is named `db`, so a container of yours named
+  `postgres` is never shadowed.
+
+### Without Docker
+
+Pre-requirements: a PostgreSQL server and Go 1.26 or higher.
+
+1. Copy `.env.example` to `.env` and fill in your PostgreSQL credentials
+2. Uncomment `POSTGRESQL_HOST`, `POSTGRESQL_PORT` and `FILES_PATH` at the bottom of the file
 3. Start the server with `go run .`
-4. Enjoy!
 
 # II. How to create an admin account
 
-By default, there is no admin account. You will have to go manually create an invite code in the PostgreSQL database:
+Nothing manual to do — **on the very first start, the server prints an invitation
+code in its own logs**:
+
+```bash
+docker compose logs filetransfer
+```
+
+```
+================================================================
+| PREMIER DEMARRAGE - aucun compte administrateur              |
+|                                                              |
+|   Code d'invitation :  KP57S-NPXTE-WMQZX-AXK7B               |
+|                                                              |
+|   Inscription :  http://localhost:3333/admin/register        |
+|                                                              |
+| Ce code est a usage unique. Il reste affiche a chaque        |
+| demarrage tant qu'aucun compte n'a ete cree.                 |
+================================================================
+```
+
+Go to <http://localhost:3333/admin/register>, paste the code, and your admin
+account is created.
+
+The code is single-use. It stays visible on every restart until an account is
+actually created, so losing the first log output is not a problem. Once an admin
+exists, the banner never shows up again.
+
+To invite another administrator later, add a new code in the database:
+
 ```sql
 INSERT INTO admin_invitations (token, used) VALUES ('YOUR_INVITE_CODE', false);
 ```
 
-Then you can access through: http://YOUR_SERVER_IP:3333/admin/register and create an account :)
+```bash
+docker compose exec db psql -U filetransfer -d filetransfer
+```
 
 # III. How to use it
 
@@ -55,7 +119,7 @@ Then you can access through: http://YOUR_SERVER_IP:3333/admin/register and creat
 
 ## IV. Stored data
 
-The files are stored unecrypted in the folder `./files/`.
+The files are stored unecrypted in the folder `./uploads/` (or in `FILES_PATH` if you run the server without Docker).
 
 User data, file data... etc are stored in a PostgreSQL database.
 

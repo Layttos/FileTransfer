@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+.env-PROD
+.env.local
+uploads/
+files/
+docker-compose.yml
+docker-compose.override.yml
+Dockerfile
+README.md
+server

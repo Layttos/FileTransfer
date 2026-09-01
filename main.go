@@ -5,6 +5,7 @@ import (
 	"filetransfer-backend/postsql"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/jackc/pgx"
 	"github.com/joho/godotenv"
@@ -15,16 +16,24 @@ var (
 )
 
 func main() {
-	err := godotenv.Load("./.env")
-	if err != nil {
-		fmt.Println("Error loading .env file")
+	// Le .env est optionnel : sous Docker la configuration arrive par l'environnement.
+	// godotenv n'ecrase jamais une variable deja definie, les deux modes cohabitent.
+	if err := godotenv.Load("./.env"); err != nil {
+		fmt.Println("Pas de fichier .env, utilisation des variables d'environnement")
 	}
+
 	fmt.Println("——— Starting File Transfer Backend server ———")
-	port := "3333"
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3333"
+	}
 
 	fmt.Println("Attemping to connect to the PostgreSQL database")
 	postsql.ReconnectDB()
 	defer postsql.Close()
+
+	postsql.BootstrapAdminInvitation()
 
 	http.HandleFunc("/upload", routes.HandleUpload)
 	http.HandleFunc("/index", routes.HandleDefault)

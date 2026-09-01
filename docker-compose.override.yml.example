@@ -1,0 +1,32 @@
+# Optionnel — a copier en `docker-compose.override.yml` pour adapter le deploiement
+# a une infrastructure existante. Compose fusionne ce fichier automatiquement.
+#
+#     cp docker-compose.override.yml.example docker-compose.override.yml
+#
+# Gardez uniquement les blocs dont vous avez besoin.
+
+services:
+  filetransfer:
+    # --- Cas 1 : derriere un reverse proxy existant -------------------------
+    # (Nginx Proxy Manager, Traefik, Caddy...) Le proxy joint le conteneur par
+    # le reseau partage, inutile de publier le port sur l'hote.
+    ports: !override []
+    networks:
+      - default
+      - proxy
+
+    # --- Cas 2 : utiliser un PostgreSQL deja en place -----------------------
+    # Renseignez POSTGRESQL_HOST dans votre .env (nom du conteneur ou hote
+    # joignable), puis decommentez la ligne ci-dessous pour ne plus attendre la
+    # base embarquee.
+    # depends_on: !override []
+
+  # Suite du cas 2 : ne pas demarrer la base embarquee.
+  # db:
+  #   scale: 0
+
+networks:
+  proxy:
+    external: true
+    # Remplacez par le nom du reseau de votre reverse proxy.
+    name: applications

@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: filetransfer-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRESQL_DATABASE:-filetransfer}
+      POSTGRES_USER: ${POSTGRESQL_USER:-filetransfer}
+      POSTGRES_PASSWORD: ${POSTGRESQL_PASSWORD:-filetransfer}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRESQL_USER:-filetransfer} -d ${POSTGRESQL_DATABASE:-filetransfer}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  filetransfer:
+    build: .
+    image: filetransfer:latest
+    container_name: filetransfer
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${PORT:-3333}:3333"
+    environment:
+      POSTGRESQL_HOST: ${POSTGRESQL_HOST:-db}
+      POSTGRESQL_PORT: ${POSTGRESQL_PORT:-5432}
+      POSTGRESQL_DATABASE: ${POSTGRESQL_DATABASE:-filetransfer}
+      POSTGRESQL_USER: ${POSTGRESQL_USER:-filetransfer}
+      POSTGRESQL_PASSWORD: ${POSTGRESQL_PASSWORD:-filetransfer}
+      # Chemin de stockage DANS le conteneur : doit rester aligne sur le volume ci-dessous.
+      FILES_PATH: /app/uploads
+      # Sert uniquement a afficher la bonne URL dans les logs de demarrage.
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:${PORT:-3333}}
+      TZ: ${TZ:-Europe/Paris}
+    volumes:
+      - ./uploads:/app/uploads
+
+volumes:
+  db-data:
