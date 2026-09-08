@@ -31,7 +31,23 @@
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/xml-fold.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/indent-fold.min.js"></script>
     <style>
+        /* Le visualiseur doit etre parfaitement opaque : en translucide, le
+           tableau de bord transparaissait derriere le texte. */
+        html[data-theme="light"] #viewer { background-color: #f3f4f6 !important; }
+        html[data-theme="dark"]  #viewer { background-color: #0f172a !important; }
+
+        /* Fond sombre neutre pour les medias, qui les met en valeur. */
+        #viewer-body.media { background-color: #0b0f19; }
+
+        /* Surface pleine pour l'editeur, accordee au theme. */
+        html[data-theme="light"] #viewer-body.edit { background-color: #ffffff; }
+        html[data-theme="dark"]  #viewer-body.edit { background-color: #0b1220; }
+
+        #viewer-body.edit { display: block; }
+        #viewer-body.edit > .CodeMirror,
+        #viewer-body.edit > #editor-fallback { height: 100%; width: 100%; }
         .CodeMirror { height: 100%; font-size: 13px; }
+        html[data-theme="light"] .CodeMirror { background-color: #ffffff; }
         #viewer-body .CodeMirror { border-radius: 0; }
         #editor-fallback { width: 100%; height: 100%; resize: none; border: 0; outline: none;
                            padding: 1rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -362,7 +378,7 @@
 </div>
 
 <!-- Visualiseur et éditeur -->
-<div id="viewer" class="fixed inset-0 z-50 hidden flex-col bg-black/85">
+<div id="viewer" class="fixed inset-0 z-50 hidden flex-col">
     <header class="side flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2">
         <span id="viewer-icon" class="text-indigo-600 dark:text-indigo-400"></span>
         <div class="min-w-0 flex-1">
@@ -979,6 +995,7 @@ function closeViewer(force) {
     if (!force && viewerDirty && !confirm('Modifications non enregistrées. Fermer quand même ?')) return;
     viewer.classList.add('hidden');
     viewer.classList.remove('flex');
+    viewerBody.className = 'flex min-h-0 flex-1 items-center justify-center overflow-auto';
     viewerBody.innerHTML = '';
     cmEditor = null;
     viewerFile = null;
@@ -998,11 +1015,17 @@ async function openViewer(file) {
     document.getElementById('viewer-dl').href = url;
     viewerSave.classList.add('hidden');
     markDirty(false);
+    // Etat neutre : le mode est fixe juste apres, selon le type de fichier.
+    viewerBody.className = 'flex min-h-0 flex-1 items-center justify-center overflow-auto';
     viewerBody.innerHTML = '<p class="muted p-8 text-sm">Chargement…</p>';
     viewer.classList.remove('hidden');
     viewer.classList.add('flex');
 
     const src = url + '&preview=true';
+
+    if (PREVIEWABLE[kind]) {
+        viewerBody.classList.add('media');
+    }
 
     if (kind === 'image') {
         viewerBody.innerHTML = '<img src="' + src + '" alt="' + esc(file.file_name) +
@@ -1046,7 +1069,7 @@ async function openViewer(file) {
     }
 
     viewerBody.innerHTML = '';
-    viewerBody.classList.remove('items-center', 'justify-center');
+    viewerBody.className = 'min-h-0 flex-1 overflow-hidden edit';
     viewerSave.classList.remove('hidden');
 
     if (!cmAvailable) {

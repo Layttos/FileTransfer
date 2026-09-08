@@ -44,6 +44,7 @@ func main() {
 
 	http.HandleFunc("/upload", routes.HandleUpload)
 	http.HandleFunc("/index", routes.HandleDefault)
+	http.HandleFunc("/api", routes.HandleAPIDoc)
 	http.HandleFunc("/admin", routes.HandleAdmin)
 	http.HandleFunc(`/{$}`, routes.HandleDefault)
 	http.HandleFunc(`/admin/login`, routes.HandleAdminLogin)

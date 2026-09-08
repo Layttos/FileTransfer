@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#4f46e5">
+    <title>API | FileTransfer</title>
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        html[data-theme="light"] body { background-color: #f3f4f6 !important; color: #111827 !important; }
+        html[data-theme="dark"]  body { background-color: #0f172a !important; color: #f8fafc !important; }
+        html[data-theme="light"] .card { background-color: #ffffff !important; border-color: #e5e7eb !important; }
+        html[data-theme="dark"]  .card { background-color: #1f2937 !important; border-color: #374151 !important; }
+        html[data-theme="light"] .side { background-color: #ffffff !important; border-color: #e5e7eb !important; }
+        html[data-theme="dark"]  .side { background-color: #111827 !important; border-color: #374151 !important; }
+        html[data-theme="light"] .muted { color: #6b7280 !important; }
+        html[data-theme="dark"]  .muted { color: #9ca3af !important; }
+        html[data-theme="light"] .strong { color: #111827 !important; }
+        html[data-theme="dark"]  .strong { color: #f8fafc !important; }
+        html[data-theme="light"] .rowline { border-color: #e5e7eb !important; }
+        html[data-theme="dark"]  .rowline { border-color: #374151 !important; }
+        html[data-theme="light"] pre, html[data-theme="light"] .codebg { background-color: #f8fafc !important; }
+        html[data-theme="dark"]  pre, html[data-theme="dark"]  .codebg { background-color: #0b1220 !important; }
+        html[data-theme="light"] #themeToggle { background-color: #000000 !important; color: #ffffff !important; }
+        html[data-theme="dark"]  #themeToggle { background-color: #ffffff !important; color: #000000 !important; }
+
+        code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.875em; }
+        pre { overflow-x: auto; border-radius: 0.5rem; padding: 0.875rem 1rem; line-height: 1.5; }
+        pre code { font-size: 0.8125rem; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 0.5rem 0.75rem; vertical-align: top; }
+        th { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.03em; }
+        .tbl-wrap { overflow-x: auto; }
+        .anchor { scroll-margin-top: 5rem; }
+        .verb { font-size: 0.6875rem; font-weight: 700; padding: 0.125rem 0.4rem; border-radius: 0.25rem; }
+        .get  { background: #dbeafe; color: #1e40af; }
+        .post { background: #dcfce7; color: #166534; }
+        html[data-theme="dark"] .get  { background: #1e3a8a55; color: #93c5fd; }
+        html[data-theme="dark"] .post { background: #14532d55; color: #86efac; }
+        @media (max-width: 1023px) { main { padding-bottom: 3rem; } }
+    </style>
+</head>
+<body class="min-h-screen transition-colors duration-200">
+
+<button id="themeToggle" type="button" class="fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-xl ring-1 ring-black/10 transition hover:scale-105" aria-label="Changer de thème"></button>
+
+<header class="side sticky top-0 z-30 border-b px-4 py-3 md:px-8">
+    <div class="mx-auto flex max-w-6xl items-center justify-between gap-3">
+        <div>
+            <p class="text-base font-bold text-indigo-600 dark:text-indigo-400">FileTransfer</p>
+            <p class="muted text-xs">Référence de l'API</p>
+        </div>
+        <a href="/" class="rounded-md border px-3 py-2 text-sm transition hover:border-indigo-400">Retour au site</a>
+    </div>
+</header>
+
+<div class="mx-auto flex max-w-6xl gap-8 px-4 py-6 md:px-8">
+
+    <!-- Sommaire -->
+    <nav class="sticky top-24 hidden h-fit w-56 shrink-0 lg:block">
+        <p class="muted mb-2 text-xs uppercase">Sommaire</p>
+        <ul class="space-y-1 text-sm">
+            <li><a href="#principes" class="block rounded px-2 py-1 hover:bg-black/5 dark:hover:bg-white/5">Principes</a></li>
+            <li><a href="#auth" class="block rounded px-2 py-1 hover:bg-black/5 dark:hover:bg-white/5">Authentification</a></li>
+            <li><a href="#public" class="block rounded px-2 py-1 hover:bg-black/5 dark:hover:bg-white/5">Points d'entrée publics</a></li>
+            <li><a href="#pages" class="block rounded px-2 py-1 hover:bg-black/5 dark:hover:bg-white/5">Pages d'administration</a></li>
+            <li><a href="#actions" class="block rounded px-2 py-1 hover:bg-black/5 dark:hover:bg-white/5">Actions <code>/admin/api</code></a></li>
+            <li><a href="#fichiers" class="block rounded px-2 py-1 hover:bg-black/5 dark:hover:bg-white/5">Transferts de fichiers</a></li>
+            <li><a href="#webauthn" class="block rounded px-2 py-1 hover:bg-black/5 dark:hover:bg-white/5">Passkeys (WebAuthn)</a></li>
+            <li><a href="#erreurs" class="block rounded px-2 py-1 hover:bg-black/5 dark:hover:bg-white/5">Erreurs</a></li>
+            <li><a href="#limites" class="block rounded px-2 py-1 hover:bg-black/5 dark:hover:bg-white/5">Limites</a></li>
+        </ul>
+    </nav>
+
+    <main class="min-w-0 flex-1 space-y-10">
+
+        <!-- Principes -->
+        <section id="principes" class="anchor">
+            <h1 class="strong text-2xl font-bold md:text-3xl">API FileTransfer</h1>
+            <p class="muted mt-2 text-sm">Référence complète des points d'entrée exposés par le serveur.</p>
+
+            <div class="card mt-4 space-y-3 rounded-lg border p-4 text-sm md:p-5">
+                <p><span class="strong font-semibold">Base.</span> Toutes les adresses sont relatives à l'origine du service, par exemple <code>https://votre-domaine/upload</code>.</p>
+                <p><span class="strong font-semibold">Formats.</span> Les réponses sont en JSON, sauf les points d'entrée qui servent un fichier ou une page HTML. Les corps de requête JSON attendent l'en-tête <code>Content-Type: application/json</code>.</p>
+                <p><span class="strong font-semibold">Une seule adresse d'API.</span> Toute l'administration passe par <code>POST /admin/api</code>, avec un champ <code>action</code> qui désigne l'opération. Les transferts de fichiers ont leurs propres adresses, parce qu'un navigateur doit pouvoir les suivre directement.</p>
+                <p><span class="strong font-semibold">Flux.</span> Dépôts et téléchargements sont traités en flux, sans limite de taille côté application. Le plafond éventuel vient du reverse proxy, voir <a href="#limites" class="text-indigo-600 hover:underline dark:text-indigo-400">Limites</a>.</p>
+            </div>
+        </section>
+
+        <!-- Authentification -->
+        <section id="auth" class="anchor">
+            <h2 class="strong text-xl font-bold">Authentification</h2>
+            <p class="muted mt-1 text-sm">Les points d'entrée publics ne demandent rien. Tout ce qui relève de l'administration exige une session.</p>
+
+            <div class="card mt-4 space-y-3 rounded-lg border p-4 text-sm md:p-5">
+                <p>Une connexion réussie pose un cookie <code>admin_session</code>, <code>HttpOnly</code> et <code>SameSite=Lax</code>, marqué <code>Secure</code> derrière HTTPS. Il est inaccessible au JavaScript de la page : seule l'empreinte du jeton est conservée en base.</p>
+                <p>Envoyez ce cookie sur chaque appel. En <code>fetch</code>, cela signifie <code>credentials: 'same-origin'</code> ; avec curl, un fichier de cookies.</p>
+                <p>La session dure 7 jours et se prolonge à chaque usage. Sans cookie valable, les appels d'API répondent <code>401</code> et les pages redirigent vers <code>/admin/login</code>.</p>
+            </div>
+
+            <pre class="codebg mt-4"><code># Ouvrir une session
+curl -c cookies.txt -X POST https://votre-domaine/admin/api \
+     -H 'Content-Type: application/json' \
+     -d '{"action":"login","username":"admin","password":"…"}'
+
+# Réutiliser la session
+curl -b cookies.txt -X POST https://votre-domaine/admin/api \
+     -H 'Content-Type: application/json' \
+     -d '{"action":"overview"}'</code></pre>
+
+            <p class="muted mt-3 text-sm">Si le compte exige une passkey en second facteur, <code>login</code> ne pose pas de cookie et répond <code>{"status":"PASSKEY_REQUIRED","pending":"…"}</code>. Il faut alors dérouler la cérémonie décrite dans <a href="#webauthn" class="text-indigo-600 hover:underline dark:text-indigo-400">Passkeys</a>.</p>
+        </section>
+
+        <!-- Points d'entrée publics -->
+        <section id="public" class="anchor">
+            <h2 class="strong text-xl font-bold">Points d'entrée publics</h2>
+            <p class="muted mt-1 text-sm">Accessibles sans authentification.</p>
+
+            <div class="card mt-4 divide-y rounded-lg border">
+                <article class="rowline p-4 md:p-5">
+                    <p><span class="verb post">POST</span> <code class="strong ml-2">/upload</code></p>
+                    <p class="muted mt-2 text-sm">Dépose un fichier. Corps en <code>multipart/form-data</code>, champ <code>file</code>. Le contenu est écrit sur le disque au fil de la lecture : la taille n'est pas limitée par l'application.</p>
+                    <div class="tbl-wrap mt-3">
+                        <table class="text-sm">
+                            <thead class="muted"><tr class="rowline border-b"><th>Paramètre d'URL</th><th>Rôle</th></tr></thead>
+                            <tbody>
+                                <tr class="rowline border-b"><td><code>password</code></td><td>Facultatif. Protège le fichier : son téléchargement exigera ce mot de passe.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <pre class="codebg mt-3"><code>curl -F "file=@rapport.pdf" https://votre-domaine/upload
+
+{"id":"aB3xY9","size":184320,"ip":"203.0.113.7"}</code></pre>
+                    <p class="muted mt-2 text-xs">Les noms commençant par <code>.</code> ou <code>_</code> sont ignorés. Un transfert interrompu ne laisse aucun fichier partiel.</p>
+                </article>
+
+                <article class="rowline p-4 md:p-5">
+                    <p><span class="verb get">GET</span> <code class="strong ml-2">/{id}</code></p>
+                    <p class="muted mt-2 text-sm">Sans paramètre, sert la page de téléchargement. Un identifiant inconnu renvoie la page 404.</p>
+                    <div class="tbl-wrap mt-3">
+                        <table class="text-sm">
+                            <thead class="muted"><tr class="rowline border-b"><th>Paramètre</th><th>Effet</th></tr></thead>
+                            <tbody>
+                                <tr class="rowline border-b"><td><code>jsonInfo=only</code></td><td>Renvoie <code>{"filename":…,"size":…}</code> sans servir le fichier.</td></tr>
+                                <tr class="rowline border-b"><td><code>download=true</code></td><td>Sert le fichier en pièce jointe.</td></tr>
+                                <tr class="rowline border-b"><td><code>preview=true</code></td><td>Sert le fichier en affichage direct dans le navigateur.</td></tr>
+                                <tr class="rowline border-b"><td><code>password</code></td><td>Mot de passe du fichier, s'il est protégé.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="muted mt-3 text-sm">Le mot de passe peut aussi voyager dans l'en-tête <code>X-File-Password</code>, ce que fait la page de téléchargement. En son absence ou s'il est faux, la réponse est <code>401</code>.</p>
+                    <pre class="codebg mt-3"><code>curl "https://votre-domaine/aB3xY9?jsonInfo=only"
+curl -H "X-File-Password: secret" -O -J "https://votre-domaine/aB3xY9?download=true"</code></pre>
+                    <p class="muted mt-2 text-xs">Les requêtes <code>Range</code> sont acceptées : reprise de téléchargement et déplacement dans une vidéo fonctionnent.</p>
+                </article>
+
+                <article class="p-4 md:p-5">
+                    <p><span class="verb get">GET</span> <code class="strong ml-2">/</code> &nbsp;·&nbsp; <code class="strong">/index</code> &nbsp;·&nbsp; <code class="strong">/api</code></p>
+                    <p class="muted mt-2 text-sm">Page de dépôt, son alias, et la présente page.</p>
+                </article>
+            </div>
+        </section>
+
+        <!-- Pages d'administration -->
+        <section id="pages" class="anchor">
+            <h2 class="strong text-xl font-bold">Pages d'administration</h2>
+            <div class="card tbl-wrap mt-4 rounded-lg border">
+                <table class="text-sm">
+                    <thead class="muted"><tr class="rowline border-b"><th>Adresse</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr class="rowline border-b"><td><code>/admin</code></td><td>Redirige vers le tableau de bord.</td></tr>
+                        <tr class="rowline border-b"><td><code>/admin/login</code></td><td>Connexion. Redirige vers le tableau de bord si une session est déjà ouverte.</td></tr>
+                        <tr class="rowline border-b"><td><code>/admin/register</code></td><td>Création d'un compte à partir d'un code d'invitation.</td></tr>
+                        <tr class="rowline border-b"><td><code>/admin/dashboard</code></td><td>Tableau de bord. Redirige vers la connexion sans session.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Actions -->
+        <section id="actions" class="anchor">
+            <h2 class="strong text-xl font-bold">Actions de <code>/admin/api</code></h2>
+            <p class="muted mt-1 text-sm">Toutes en <span class="verb post">POST</span>, corps JSON contenant au minimum <code>action</code>. Session requise, sauf <code>login</code> et <code>register</code>.</p>
+
+            <h3 class="strong mt-6 text-base font-semibold">Session et compte</h3>
+            <div class="card tbl-wrap mt-2 rounded-lg border">
+                <table class="text-sm">
+                    <thead class="muted"><tr class="rowline border-b"><th>Action</th><th>Champs</th><th>Réponse</th></tr></thead>
+                    <tbody>
+                        <tr class="rowline border-b"><td><code>login</code></td><td><code>username</code> ou <code>email</code>, <code>password</code></td><td>Pose le cookie de session. <code>PASSKEY_REQUIRED</code> + <code>pending</code> si un second facteur est exigé.</td></tr>
+                        <tr class="rowline border-b"><td><code>register</code></td><td><code>username</code>, <code>email</code>, <code>password</code>, <code>firstName</code>, <code>lastName</code>, <code>inviteCode</code></td><td>Crée le compte et ouvre la session. Mot de passe de 8 caractères minimum.</td></tr>
+                        <tr class="rowline border-b"><td><code>logout</code></td><td>—</td><td>Révoque la session courante et efface le cookie.</td></tr>
+                        <tr class="rowline border-b"><td><code>me</code></td><td>—</td><td>Compte connecté, nombre de passkeys, usage du cloud personnel.</td></tr>
+                        <tr class="rowline border-b"><td><code>change_password</code></td><td><code>currentPassword</code>, <code>newPassword</code></td><td>Change le mot de passe et déconnecte les autres appareils.</td></tr>
+                        <tr class="rowline border-b"><td><code>set_auth_policy</code></td><td><code>authPolicy</code></td><td><code>password</code>, <code>passkey_or_password</code> ou <code>password_and_passkey</code>. Exige une passkey enregistrée pour les deux dernières.</td></tr>
+                        <tr class="rowline border-b"><td><code>sessions_list</code></td><td>—</td><td>Sessions actives du compte, celle en cours marquée <code>current</code>.</td></tr>
+                        <tr class="rowline border-b"><td><code>session_revoke</code></td><td><code>sessionID</code></td><td>Déconnecte une session précise.</td></tr>
+                        <tr class="rowline border-b"><td><code>sessions_revoke_others</code></td><td>—</td><td>Déconnecte tous les autres appareils.</td></tr>
+                        <tr class="rowline border-b"><td><code>passkeys_list</code></td><td>—</td><td>Passkeys du compte.</td></tr>
+                        <tr class="rowline border-b"><td><code>passkey_rename</code></td><td><code>credID</code>, <code>credName</code></td><td>Renomme une passkey.</td></tr>
+                        <tr class="rowline border-b"><td><code>passkey_delete</code></td><td><code>credID</code></td><td>Révoque une passkey. Retirer la dernière ramène le compte au mot de passe seul.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="strong mt-6 text-base font-semibold">Fichiers publics</h3>
+            <div class="card tbl-wrap mt-2 rounded-lg border">
+                <table class="text-sm">
+                    <thead class="muted"><tr class="rowline border-b"><th>Action</th><th>Champs</th><th>Réponse</th></tr></thead>
+                    <tbody>
+                        <tr class="rowline border-b"><td><code>list_files</code></td><td><code>search</code> ; <code>offset</code> et <code>limit</code> en paramètres d'URL</td><td><code>{files, total}</code>. La recherche porte sur le nom, l'identifiant et l'IP de dépôt, et accepte les jokers <code>*</code> et <code>?</code>.</td></tr>
+                        <tr class="rowline border-b"><td><code>rename</code></td><td><code>fileID</code>, <code>newFileName</code></td><td>Renomme le fichier sur le disque et en base.</td></tr>
+                        <tr class="rowline border-b"><td><code>change_id</code></td><td><code>fileID</code>, <code>newFileID</code></td><td>Change l'identifiant public, donc le lien de partage.</td></tr>
+                        <tr class="rowline border-b"><td><code>delete</code></td><td><code>fileID</code></td><td>Supprime le fichier et son enregistrement.</td></tr>
+                        <tr class="rowline border-b"><td><code>overview</code></td><td>—</td><td>Compteurs de l'instance.</td></tr>
+                        <tr class="rowline border-b"><td><code>storage</code></td><td>—</td><td>Occupation et plafond de stockage.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="strong mt-6 text-base font-semibold">Cloud personnel</h3>
+            <p class="muted mt-1 text-sm">Cloisonné par compte : les requêtes filtrent sur le propriétaire, un administrateur ne peut pas atteindre l'espace d'un autre.</p>
+            <div class="card tbl-wrap mt-2 rounded-lg border">
+                <table class="text-sm">
+                    <thead class="muted"><tr class="rowline border-b"><th>Action</th><th>Champs</th><th>Réponse</th></tr></thead>
+                    <tbody>
+                        <tr class="rowline border-b"><td><code>personal_list</code></td><td><code>folder</code></td><td><code>{folder, folders, files}</code> du dossier demandé.</td></tr>
+                        <tr class="rowline border-b"><td><code>personal_create</code></td><td><code>folder</code>, <code>fileName</code></td><td>Crée un fichier vide.</td></tr>
+                        <tr class="rowline border-b"><td><code>personal_rename</code></td><td><code>fileID</code>, <code>newFileName</code></td><td>Renomme un fichier.</td></tr>
+                        <tr class="rowline border-b"><td><code>personal_move</code></td><td><code>fileID</code>, <code>folder</code></td><td>Déplace un fichier vers un autre dossier.</td></tr>
+                        <tr class="rowline border-b"><td><code>personal_delete</code></td><td><code>fileID</code></td><td>Supprime un fichier.</td></tr>
+                        <tr class="rowline border-b"><td><code>personal_share</code></td><td><code>fileID</code>, <code>sharePassword</code></td><td>Publie le fichier dans l'espace public. Renvoie <code>{id, url, protected}</code>. Mot de passe vide pour un lien libre.</td></tr>
+                        <tr class="rowline border-b"><td><code>folder_create</code></td><td><code>folder</code></td><td>Crée un dossier, même vide.</td></tr>
+                        <tr class="rowline border-b"><td><code>folder_rename</code></td><td><code>folder</code>, <code>newFileName</code></td><td>Renomme un dossier ; sous-dossiers et fichiers suivent.</td></tr>
+                        <tr class="rowline border-b"><td><code>folder_delete</code></td><td><code>folder</code></td><td>Supprime un dossier et tout son contenu. Renvoie le nombre de fichiers supprimés.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="strong mt-6 text-base font-semibold">Administrateurs, invitations, journal</h3>
+            <div class="card tbl-wrap mt-2 rounded-lg border">
+                <table class="text-sm">
+                    <thead class="muted"><tr class="rowline border-b"><th>Action</th><th>Champs</th><th>Réponse</th></tr></thead>
+                    <tbody>
+                        <tr class="rowline border-b"><td><code>admins_list</code></td><td>—</td><td>Comptes, méthode de connexion, passkeys, sessions.</td></tr>
+                        <tr class="rowline border-b"><td><code>admin_delete</code></td><td><code>adminID</code></td><td>Supprime un compte avec ses sessions et passkeys. Ni son propre compte, ni le dernier.</td></tr>
+                        <tr class="rowline border-b"><td><code>invites_list</code></td><td>—</td><td>Codes d'invitation et leur état.</td></tr>
+                        <tr class="rowline border-b"><td><code>invite_create</code></td><td>—</td><td>Génère un code à usage unique.</td></tr>
+                        <tr class="rowline border-b"><td><code>invite_delete</code></td><td><code>token</code></td><td>Supprime un code non utilisé.</td></tr>
+                        <tr class="rowline border-b"><td><code>audit_list</code></td><td><code>category</code>, <code>level</code>, <code>search</code>, <code>offset</code>, <code>limit</code></td><td><code>{entries, total}</code>. Catégories : <code>auth</code>, <code>upload</code>, <code>download</code>, <code>file</code>, <code>personal</code>, <code>admin</code>, <code>system</code>. Niveaux : <code>info</code>, <code>warn</code>, <code>error</code>.</td></tr>
+                        <tr class="rowline border-b"><td><code>audit_stats</code></td><td>—</td><td>Nombre d'évènements par catégorie sur 24 heures.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Transferts -->
+        <section id="fichiers" class="anchor">
+            <h2 class="strong text-xl font-bold">Transferts de fichiers</h2>
+            <p class="muted mt-1 text-sm">Adresses distinctes de <code>/admin/api</code>, pour qu'un navigateur puisse les suivre directement. Session requise.</p>
+
+            <div class="card mt-4 divide-y rounded-lg border">
+                <article class="rowline p-4 md:p-5">
+                    <p><span class="verb get">GET</span> <code class="strong ml-2">/admin/download?id=…</code></p>
+                    <p class="muted mt-2 text-sm">Télécharge un fichier public depuis l'administration. Le mot de passe éventuel du fichier n'est pas demandé : c'est un privilège d'administration assumé, et chaque accès de ce type est inscrit au journal avec le nom du compte.</p>
+                </article>
+                <article class="rowline p-4 md:p-5">
+                    <p><span class="verb post">POST</span> <code class="strong ml-2">/admin/personal/upload?folder=…</code></p>
+                    <p class="muted mt-2 text-sm">Dépose un fichier dans le cloud personnel. <code>multipart/form-data</code>, champ <code>file</code>. Sans limite de taille côté application.</p>
+                </article>
+                <article class="rowline p-4 md:p-5">
+                    <p><span class="verb get">GET</span> <code class="strong ml-2">/admin/personal/download?id=…</code></p>
+                    <p class="muted mt-2 text-sm">Sert un fichier personnel. <code>preview=true</code> le renvoie en affichage direct avec son vrai type MIME, ce qu'utilisent la prévisualisation des médias et l'éditeur.</p>
+                </article>
+                <article class="rowline p-4 md:p-5">
+                    <p><span class="verb get">GET</span> <code class="strong ml-2">/admin/personal/zip?folder=…</code></p>
+                    <p class="muted mt-2 text-sm">Renvoie un dossier et ses sous-dossiers sous forme d'archive zip, construite en flux, sans fichier temporaire ni tampon mémoire. L'arborescence relative au dossier demandé est conservée.</p>
+                </article>
+                <article class="p-4 md:p-5">
+                    <p><span class="verb post">POST</span> <code class="strong ml-2">/admin/personal/save?id=…</code></p>
+                    <p class="muted mt-2 text-sm">Remplace le contenu d'un fichier personnel. Corps brut, 2 Mio maximum. L'écriture passe par un fichier temporaire suivi d'un renommage : une sauvegarde interrompue ou refusée laisse l'original intact.</p>
+                </article>
+            </div>
+        </section>
+
+        <!-- WebAuthn -->
+        <section id="webauthn" class="anchor">
+            <h2 class="strong text-xl font-bold">Passkeys (WebAuthn)</h2>
+            <p class="muted mt-1 text-sm">Chaque cérémonie se déroule en deux appels. Le jeton <code>ceremony</code> rendu par <code>begin</code> est à usage unique et expire au bout de cinq minutes.</p>
+
+            <div class="card tbl-wrap mt-4 rounded-lg border">
+                <table class="text-sm">
+                    <thead class="muted"><tr class="rowline border-b"><th>Adresse</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr class="rowline border-b"><td><code>POST /admin/webauthn/register/begin</code></td><td>Session requise. Renvoie <code>{ceremony, options}</code>. Une clé résidente est exigée, condition pour que les gestionnaires de mots de passe la conservent comme passkey.</td></tr>
+                        <tr class="rowline border-b"><td><code>POST /admin/webauthn/register/finish?ceremony=…&amp;name=…</code></td><td>Session requise. Corps : la réponse d'attestation du navigateur. Enregistrer la première passkey bascule le compte en <code>passkey_or_password</code>.</td></tr>
+                        <tr class="rowline border-b"><td><code>POST /admin/webauthn/login/begin</code></td><td>Sans session. Cérémonie découvrable, sans identifiant. Avec <code>?pending=…</code>, second facteur après un mot de passe accepté.</td></tr>
+                        <tr class="rowline border-b"><td><code>POST /admin/webauthn/login/finish?ceremony=…</code></td><td>Corps : la réponse d'assertion. Pose le cookie de session. Ajouter <code>&amp;pending=…</code> pour clore une connexion à deux facteurs.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Erreurs -->
+        <section id="erreurs" class="anchor">
+            <h2 class="strong text-xl font-bold">Erreurs</h2>
+            <p class="muted mt-1 text-sm">Une erreur renvoie un code HTTP explicite et un corps <code>{"error":"…"}</code> en français.</p>
+            <div class="card tbl-wrap mt-4 rounded-lg border">
+                <table class="text-sm">
+                    <thead class="muted"><tr class="rowline border-b"><th>Code</th><th>Signification</th></tr></thead>
+                    <tbody>
+                        <tr class="rowline border-b"><td><code>400</code></td><td>Requête mal formée, champ manquant ou valeur refusée.</td></tr>
+                        <tr class="rowline border-b"><td><code>401</code></td><td>Session absente ou expirée ; ou mot de passe de fichier manquant ou faux.</td></tr>
+                        <tr class="rowline border-b"><td><code>403</code></td><td>La méthode de connexion du compte n'autorise pas ce moyen d'authentification.</td></tr>
+                        <tr class="rowline border-b"><td><code>404</code></td><td>Fichier ou ressource introuvable.</td></tr>
+                        <tr class="rowline border-b"><td><code>409</code></td><td>Nom d'utilisateur ou adresse e-mail déjà pris.</td></tr>
+                        <tr class="rowline border-b"><td><code>413</code></td><td>Contenu trop volumineux. Souvent renvoyé par le reverse proxy, pas par l'application.</td></tr>
+                        <tr class="rowline border-b"><td><code>500</code></td><td>Erreur du serveur. Le journal en conserve la cause.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Limites -->
+        <section id="limites" class="anchor">
+            <h2 class="strong text-xl font-bold">Limites</h2>
+            <div class="card mt-4 space-y-3 rounded-lg border p-4 text-sm md:p-5">
+                <p><span class="strong font-semibold">Taille des transferts.</span> L'application n'impose aucun plafond : le corps de la requête est écrit sur le disque au fil de sa lecture. En pratique, c'est le reverse proxy qui limite. Sous Nginx, <code>client_max_body_size 0</code> lève la limite et <code>proxy_request_buffering off</code> évite de recopier tout le fichier sur le disque du proxy avant transmission.</p>
+                <p><span class="strong font-semibold">Éditeur de texte.</span> 2 Mio, côté serveur comme côté navigateur.</p>
+                <p><span class="strong font-semibold">Sessions.</span> 7 jours, prolongées à chaque usage.</p>
+                <p><span class="strong font-semibold">Journal.</span> Conservé 90 jours par défaut, réglable par <code>AUDIT_RETENTION_DAYS</code>.</p>
+                <p><span class="strong font-semibold">Chiffrement.</span> Les fichiers sont stockés en clair sur le disque du serveur. Le mot de passe d'un fichier protège son lien de partage, pas son contenu vis-à-vis de l'administrateur de la machine.</p>
+            </div>
+        </section>
+
+        <footer class="muted border-t pt-6 text-center text-xs rowline">
+            FileTransfer — <a href="/" class="text-indigo-600 hover:underline dark:text-indigo-400">retour au dépôt de fichiers</a>
+        </footer>
+    </main>
+</div>
+
+<script>
+    const THEME_KEY = 'ft-theme';
+    function applyTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        document.documentElement.classList.toggle('dark', t === 'dark');
+        document.getElementById('themeToggle').textContent = t === 'dark' ? '☀' : '☾';
+    }
+    applyTheme(localStorage.getItem(THEME_KEY) ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+    document.getElementById('themeToggle').addEventListener('click', function () {
+        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        localStorage.setItem(THEME_KEY, next);
+        applyTheme(next);
+    });
+</script>
+</body>
+</html>

@@ -13,6 +13,16 @@
 > If you wish to check some other projects I have done, please check my Github page.
 > Check this [Apple Music Rich Presence made for macOS users](https://github.com/Layttos/AppleMusic-RichPresence) or this [Discord bot](https://github.com/Layttos/CiaoKombucha)
 
+Self-hosted file transfer with no size limit, plus an administration panel:
+
+- **Transfers** streamed straight to disk, resumable, optionally password-protected
+- **One-command deployment**, PostgreSQL included, no configuration file needed
+- **Admin dashboard** with an audit journal, storage usage, and file search
+- **Personal cloud** per administrator, with a file explorer, media preview and a
+  code editor
+- **Passkeys** (WebAuthn) as an alternative or a second factor
+- **Documented HTTP API** at `/api`
+
 # I. How to setup
 
 Only requirement: **Docker** (with the Compose plugin).
@@ -40,6 +50,21 @@ docker compose down -v                # stop and ERASE the database
 
 Uploaded files land in `./uploads/` on the host, the database lives in the
 `db-data` Docker volume. Both survive `docker compose down` and rebuilds.
+
+### Configuration
+
+Everything is optional. Copy `.env.example` to `.env` to change any of it, before
+the first `docker compose up`.
+
+| Variable | Default | Role |
+|---|---|---|
+| `PORT` | `3333` | Port published on the host |
+| `POSTGRESQL_DATABASE` / `_USER` / `_PASSWORD` | `filetransfer` | Bundled database credentials. Only read when the volume is first created |
+| `POSTGRESQL_HOST` | `db` | Point it elsewhere to use your own PostgreSQL |
+| `PUBLIC_URL` | `http://localhost:3333` | Public address. Anchors passkeys, so it must match what visitors type |
+| `STORAGE_MAX` | disk capacity | Ceiling shown by the storage bar (`500G`, `2T`, …) |
+| `AUDIT_RETENTION_DAYS` | `90` | Journal retention. `0` never purges |
+| `TZ` | `Europe/Paris` | Timezone |
 
 ### Behind a reverse proxy, or with your own PostgreSQL
 
@@ -142,33 +167,90 @@ The code is single-use. It stays visible on every restart until an account is
 actually created, so losing the first log output is not a problem. Once an admin
 exists, the banner never shows up again.
 
-To invite another administrator later, add a new code in the database:
-
-```sql
-INSERT INTO admin_invitations (token, used) VALUES ('YOUR_INVITE_CODE', false);
-```
-
-```bash
-docker compose exec db psql -U filetransfer -d filetransfer
-```
+To invite another administrator later, generate a code from the dashboard under
+**Administrators → Invitation codes**. No SQL needed any more; the hand-written
+`INSERT` earlier versions required still works if you prefer it.
 
 # II bis. The admin dashboard
 
-Once logged in, everything happens at `/admin/dashboard`:
+Once logged in, everything happens at `/admin/dashboard`. It works on a phone as
+well as on a desktop: bottom navigation within thumb's reach, cards instead of
+tables, and touch targets sized accordingly.
 
-- **Overview** — file count, disk usage, share of password-protected files, active
-  sessions, registered passkeys;
-- **Public files** — list, rename, change ID, delete, and download. Downloading a
-  password-protected file from here does **not** ask for its password: an admin
-  reads the files off the disk anyway, so this is an assumed privilege. Every such
-  download is written to the server log with the admin's username;
-- **My cloud** — a private file space per administrator, with folders. Files here
-  are stored under `FILES_PATH/personal/u<id>/` and are never served by any public
-  route. Ownership is enforced in SQL, so one admin cannot reach another's files;
-- **Security** — passkeys, password, login method, and active sessions with remote
-  sign-out;
-- **Administrators** — list accounts, generate invitation codes from the interface
-  instead of by hand in SQL, revoke an account.
+### Overview
+
+File count, storage used against the cap, share of password-protected files,
+active sessions, registered passkeys.
+
+The storage bar reads its ceiling from `STORAGE_MAX` (`500G`, `2T`, …) when set,
+and otherwise from the real capacity of the filesystem holding `FILES_PATH`. It
+breaks the total down between public transfers and personal clouds.
+
+### Public files
+
+List, rename, change ID, delete, download.
+
+Search accepts a plain substring, matched against the file name, the short ID and
+the uploader's IP — and also shell-style patterns: `*.zip` finds every archive,
+`photo?.jpg` matches a single character. A file whose name literally contains
+`*.zip` is found by that same search.
+
+> [!NOTE]
+> Downloading a password-protected file from the dashboard does **not** ask for
+> its password. An administrator reads the files off the disk anyway, so this is
+> an assumed privilege — and every such download is recorded in the journal with
+> the account name.
+
+### My cloud
+
+A private file space per administrator, behaving like a real file explorer.
+
+**Right-click** (or **long-press** on a phone) opens a context menu:
+
+| Where | Actions |
+|---|---|
+| Empty space | New folder, new file, upload, download the current folder as `.zip`, go up, refresh |
+| A folder | Open, download as `.zip`, rename, upload into it, delete with its contents |
+| A file | Preview or edit, download, open in the browser, share publicly, share behind a password, rename, move, copy the private link, delete |
+
+Double-clicking opens a file or enters a folder.
+
+**Images, videos, audio and PDFs** open in a full-screen viewer. **Text and source
+files** open in an editor with syntax highlighting for around 150 languages
+detected from the file name, line numbers, search, code folding and bracket
+matching. `Ctrl+S` saves, up to 2 MiB per file. The editor is loaded from a CDN
+like Tailwind; if that fails, it falls back to a plain text area so editing still
+works.
+
+**Sharing** publishes a personal file into the public transfer space, with an
+optional password. Where the filesystem allows it the file is shared by hard link
+rather than copied, so it costs no extra disk space and deleting one side leaves
+the other intact.
+
+Personal files live under `FILES_PATH/personal/u<id>/` and are never served by any
+public route. Ownership is enforced in SQL, so one admin cannot reach another's
+files.
+
+### Journal
+
+Every action on the site is recorded: uploads, downloads (public and
+administrative), refused file passwords, sign-ins and failures, passkeys,
+sessions, password and login-method changes, file and folder operations, sharing,
+accounts, invitations, server start.
+
+Filter by category and level, or search across the actor, the target, the detail
+and the IP. Counters cover the last 24 hours. Writing is asynchronous, so the
+journal can never slow down or fail a transfer. Entries are kept 90 days by
+default, configurable with `AUDIT_RETENTION_DAYS`.
+
+### Security
+
+Passkeys, password, login method, and active sessions with remote sign-out.
+
+### Administrators
+
+List accounts, generate invitation codes from the interface instead of by hand in
+SQL, revoke an account.
 
 ### Passkeys
 
@@ -180,9 +262,15 @@ Each administrator picks their own login method under **Security → Method**:
 | Passkey or password | sign in with the passkey, password stays as a fallback |
 | Password then passkey | both are required (two factors) |
 
-You cannot select a passkey option before registering at least one passkey, and
-removing your last passkey drops the account back to password-only — neither of
-those can lock you out.
+Registering your first passkey moves the account to *passkey or password* on its
+own, so a freshly registered key works straight away. You cannot select a passkey
+option without one registered, and removing your last passkey drops the account
+back to password-only — none of these paths can lock you out.
+
+Credentials are requested as resident keys, which is what lets password managers
+such as Bitwarden store them as real passkeys. The sign-in page also arms
+conditional mediation, so your passkey is offered directly in the username field
+without clicking anything.
 
 > [!IMPORTANT]
 > **Passkeys require HTTPS**, and `PUBLIC_URL` must match the address people
@@ -192,10 +280,17 @@ those can lock you out.
 > plain HTTP.
 
 > [!NOTE]
-> Sessions are now server-side, carried by an `HttpOnly` cookie. Earlier versions
-> kept the admin username and password in ordinary cookies readable by any script
-> on the page. Those cookies are cleared on sight — after upgrading, every
-> administrator signs in once more.
+> Sessions are server-side, carried by an `HttpOnly` cookie whose hash alone is
+> stored. Versions before 2.0 kept the admin username and password in ordinary
+> cookies readable by any script on the page; those are cleared on sight, so every
+> administrator signs in once more after upgrading.
+
+# II ter. HTTP API
+
+Every endpoint is documented at **`/api`**, reachable without signing in and
+linked from the site footer: the public upload and download routes, the single
+`/admin/api` entry point with its actions, file transfers, the WebAuthn
+ceremonies, status codes and limits.
 
 # III. How to use it
 
@@ -203,89 +298,40 @@ those can lock you out.
 > To tell you how it really works. It just waits for the stream to end ;-; (yeah I do trust people)
 > So be careful on who you share it with.
 
-1. Go on http://YOUR_SERVER_IP:3333/
-2. Select your file
-3. Click on the upload button
-4. Wait
-5. Share the link to the person you want to share it with
+1. Go on `https://your-server/`
+2. Pick your files — several at once works
+3. Optionally set a password on them
+4. Hit upload and wait
+5. Share the link you get back
 6. Damn it's just a file transfer you know how it works right?
-7. Then the person you shared it with has to open the link
-8. After he opened the link he has to click on the download button
-9. Bro, it's not that hard I swear
-10. Do whatever you want with the file then
-11. Oh and you can put a password to the file but I guess you already saw that... I hope.
+7. The person opens the link and clicks download
+8. Bro, it's not that hard I swear
+
+Uploads and downloads are streamed, so size is bounded only by your disk and by
+your reverse proxy. Downloads support range requests, which means a large
+transfer can be resumed and a video can be seeked.
 
 ## IV. Stored data
 
-The files are stored unecrypted in the folder `./uploads/` (or in `FILES_PATH` if you run the server without Docker).
+Uploaded files are stored **unencrypted** in `./uploads/` (or in `FILES_PATH`
+without Docker). Each transfer gets its own directory named after its short ID.
+Personal clouds live beside them, under `personal/u<id>/`.
 
-User data, file data... etc are stored in a PostgreSQL database.
+Everything else lives in PostgreSQL. All tables are created and migrated
+automatically on start, so upgrading needs no manual SQL.
 
-Administration data lives in four more tables, created automatically on start:
-`admin_sessions` (server-side sessions), `admin_credentials` (passkeys),
-`personal_files` (each admin's private cloud), and the extra bookkeeping columns on
-`admin_invitations`.
+| Table | Holds |
+|---|---|
+| `file_transfer` | Public transfers: short ID, name, size, uploader IP, date, password hash and salt |
+| `users` | Administrator accounts, bcrypt password, and the chosen login method (`auth_policy`) |
+| `admin_invitations` | Invitation codes, whether they were used, by whom and when |
+| `admin_sessions` | Server-side sessions. Only the SHA-256 of the token is stored, so a database leak cannot be replayed as a session |
+| `admin_credentials` | Passkeys, kept as the full WebAuthn credential in JSON so a library upgrade cannot break the mapping |
+| `personal_files` | Files in each administrator's private cloud |
+| `personal_folders` | Folders of those clouds, including empty ones |
+| `audit_log` | The journal: level, category, action, actor, IP, target, detail, user agent |
 
-Here is the structure of the original tables:
-<table>
-    <thead>
-        <tr>
-            <th>file_transfer</th>
-            <th>users</th>
-            <th>admin_invitations</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>id <strong>— VARCHAR(6) PRIMARY KEY</strong></td>
-            <td>id <strong>— SERIAL PRIMARY KEY</strong></td>
-            <td>token <strong>— VARCHAR(255) NOT NULL</strong></td>
-        </tr>
-        <tr>
-            <td>file_name <strong>— VARCHAR(255) NOT NULL</strong></td>
-            <td>email_address <strong>— VARCHAR(255) NOT NULL</strong></td>
-            <td>token <strong>— VARCHAR(255) NOT NULL</strong></td>
-        </tr>
-        <tr>
-            <td>file_size <strong>— BIGINT NOT NULL</strong></td>
-            <td>last_name <strong>— VARCHAR(255) NOT NULL</strong></td>
-            <td></td>
-        </tr>
-        <tr>
-            <td>ip_addr <strong>— VARCHAR(45) NOT NULL</strong></td>
-            <td>first_name <strong>— VARCHAR(255) NOT NULL</strong></td>
-            <td></td>
-        </tr>
-        <tr>
-            <td>date <strong>— TIMESTAMP DEFAULT CURRENT_TIMESTAMP</strong></td>
-            <td>username <strong>— VARCHAR(255) NOT NULL</strong></td>
-            <td></td>
-        </tr>
-        <tr>
-            <td>has_passwd <strong>— BOOLEAN DEFAULT</strong></td>
-            <td>password <strong>— VARCHAR(255) NOT NULL</strong></td>
-            <td></td>
-        </tr>
-        <tr>
-            <td>xpasswd <strong>— CHAR(64)</strong></td>
-            <td>token <strong>— VARCHAR(255) NOT NULL</strong></td>
-            <td></td>
-        </tr>
-        <tr>
-            <td>salt_passwd <strong>— BYTEA</strong></td>
-            <td>confirmed <strong>— BOOLEAN DEFAULT FALSE</strong></td>
-            <td></td>
-        </tr>
-        <tr>
-            <td>id <strong>— VARCHAR(6) PRIMARY KEY</strong></td>
-            <td>invitation_used <strong>— VARCHAR(255) NOT NULL</strong></td>
-            <td></td>
-        </tr>
-        <tr>
-            <td></td>
-            <td>confirmation_code <strong>— VARCHAR(255) NOT NULL</strong></td>
-            <td></td>
-        </tr>
-    </tbody>
-</table>
-
+> [!NOTE]
+> A file's password protects its share link, not its content against whoever runs
+> the machine. Passwords are hashed with a per-file salt, but the file itself sits
+> in clear on the disk.
