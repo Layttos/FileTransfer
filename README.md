@@ -52,6 +52,38 @@ merges it automatically. It covers two cases:
   database. The bundled service is named `db`, so a container of yours named
   `postgres` is never shadowed.
 
+> [!IMPORTANT]
+> **A reverse proxy will cap your uploads long before this app does.** The server
+> itself streams the request straight to disk and has no size limit — a 4 GiB upload
+> was verified end to end. But nginx defaults to a small `client_max_body_size`
+> (Nginx Proxy Manager ships `2000m`), and anything bigger is rejected with a `413`
+> that never reaches the app.
+
+For nginx or Nginx Proxy Manager, add this to the host configuration (in NPM: your
+proxy host → **Advanced** tab):
+
+```nginx
+# No size limit on uploads
+client_max_body_size 0;
+
+# Stream straight to the app instead of spooling the whole file
+# to the proxy's own disk before forwarding a single byte
+proxy_request_buffering off;
+proxy_buffering off;
+
+# A multi-gigabyte transfer runs far past the 90s defaults
+client_body_timeout 3600s;
+send_timeout 3600s;
+proxy_connect_timeout 60s;
+proxy_send_timeout 3600s;
+proxy_read_timeout 3600s;
+```
+
+Other proxies: Traefik has no body limit by default, but raise its
+`respondingTimeouts`. Caddy has none either. Cloudflare's proxy caps request bodies
+(100 MB on free plans) and cannot be raised — put large-file uploads on a
+DNS-only record.
+
 ### Without Docker
 
 Pre-requirements: a PostgreSQL server and Go 1.26 or higher.

@@ -19,6 +19,26 @@ var bufferPool = sync.Pool{
 	},
 }
 
+// Derriere un reverse proxy (Nginx Proxy Manager), RemoteAddr vaut l'IP du
+// proxy et non celle du visiteur. On prefere donc les en-tetes qu'il pose.
+// Le conteneur n'expose aucun port et n'est joignable que par le proxy :
+// ces en-tetes ne peuvent pas etre falsifies depuis l'exterieur.
+func clientIP(rq *http.Request) string {
+	if ip := strings.TrimSpace(rq.Header.Get("X-Real-IP")); ip != "" {
+		return ip
+	}
+	if fwd := rq.Header.Get("X-Forwarded-For"); fwd != "" {
+		if ip := strings.TrimSpace(strings.Split(fwd, ",")[0]); ip != "" {
+			return ip
+		}
+	}
+	ip, _, err := net.SplitHostPort(rq.RemoteAddr)
+	if err != nil {
+		return rq.RemoteAddr
+	}
+	return ip
+}
+
 func HandleUpload(w http.ResponseWriter, rq *http.Request) {
 	if rq.Method != "POST" {
 		fmt.Fprintf(w, "<h1>Can't identify the request</h1>")
@@ -27,7 +47,9 @@ func HandleUpload(w http.ResponseWriter, rq *http.Request) {
 
 	reader, err := rq.MultipartReader()
 	if err != nil {
-		fmt.Fprintf(w, "<h1>%s</h1>", err.Error())
+		// Sans ce return, reader est nil et la boucle ci-dessous dereference nil.
+		writeUploadError(w, http.StatusBadRequest, "Requete multipart invalide")
+		return
 	}
 
 	for {
@@ -36,7 +58,7 @@ func HandleUpload(w http.ResponseWriter, rq *http.Request) {
 			break
 		}
 		if err != nil {
-			http.Error(w, "Mince ! Une erreur est survenue lors du téléversement...", http.StatusInternalServerError)
+			writeUploadError(w, http.StatusInternalServerError, "Erreur pendant la lecture du flux envoye")
 			return
 		}
 
@@ -50,37 +72,36 @@ func HandleUpload(w http.ResponseWriter, rq *http.Request) {
 
 			dirPath := filepath.Join(os.Getenv("FILES_PATH"), id)
 			if err := os.MkdirAll(dirPath, 0755); err != nil {
-				http.Error(w, `{"error": "Server error creating directory"}`, http.StatusInternalServerError)
+				writeUploadError(w, http.StatusInternalServerError, "Impossible de creer le repertoire de destination")
 				return
 			}
 
 			dest, err := os.Create(filepath.Join(dirPath, fn))
 			if err != nil {
-				http.Error(w, `{"error":"Server error creating the file"}`, http.StatusInternalServerError)
+				os.RemoveAll(dirPath)
+				writeUploadError(w, http.StatusInternalServerError, "Impossible de creer le fichier sur le serveur")
 				return
 			}
-			defer dest.Close()
-
-			/*size, err := io.Copy(dest, part) // on va essayer de faire propre en copiant cette fois
-			if err != nil {
-				http.Error(w, `{"error":"Server error copying file"}`, http.StatusInternalServerError)
-				return
-			}*/
 
 			buffer := bufferPool.Get().([]byte)
 			size, err := io.CopyBuffer(dest, part, buffer)
 			bufferPool.Put(buffer)
-			dest.Close()
+			closeErr := dest.Close()
 
-			if err != nil {
-				http.Error(w, `{"error":"Server error copying the file"}`, http.StatusInternalServerError)
+			// Sur un transfert de plusieurs Go, une coupure client ou un disque plein
+			// laisse un fichier tronque. Aucune ligne n'est encore ecrite en base :
+			// on efface le repertoire pour ne pas accumuler d'orphelins sur le disque.
+			if err != nil || closeErr != nil {
+				os.RemoveAll(dirPath)
+				if err == nil {
+					err = closeErr
+				}
+				fmt.Fprintf(os.Stderr, "Upload interrompu (%s, %d octets ecrits) : %v\n", fn, size, err)
+				writeUploadError(w, http.StatusInternalServerError, "Transfert interrompu avant la fin")
 				return
 			}
 
-			ip, _, err := net.SplitHostPort(rq.RemoteAddr)
-			if err != nil {
-				ip = rq.RemoteAddr
-			}
+			ip := clientIP(rq)
 
 			postsql.PushFile(id, fn, size, ip, rq.URL.Query().Get("password"))
 			response := map[string]interface{}{
@@ -95,5 +116,13 @@ func HandleUpload(w http.ResponseWriter, rq *http.Request) {
 			return
 		}
 	}
-	http.Error(w, `{"error":"Can't identify the request or file not found"}`, http.StatusBadRequest)
+	writeUploadError(w, http.StatusBadRequest, "Aucun fichier trouve dans la requete")
+}
+
+// writeUploadError renvoie une erreur en JSON, avec le bon code HTTP, pour que le
+// frontend puisse afficher autre chose qu'un generique "Erreur serveur".
+func writeUploadError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
 }

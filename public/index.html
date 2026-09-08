@@ -218,6 +218,31 @@
         }
     });
 
+    // Un upload qui echoue renvoyait toujours "Erreur serveur", ce qui rend un 413
+    // (fichier refuse par le reverse proxy) impossible a distinguer d'une panne.
+    function describeUploadError(xhr) {
+        let detail = '';
+        try {
+            const body = JSON.parse(xhr.responseText);
+            if (body && body.error) detail = ' — ' + body.error;
+        } catch (e) { /* reponse non JSON (page d'erreur du reverse proxy) */ }
+
+        switch (xhr.status) {
+            case 413:
+                return 'Fichier trop volumineux : le serveur intermédiaire refuse la requête. '
+                     + 'Augmentez client_max_body_size sur le reverse proxy.';
+            case 502:
+            case 503:
+                return 'Serveur injoignable (' + xhr.status + ')' + detail;
+            case 504:
+                return 'Délai dépassé : le reverse proxy a coupé la connexion avant la fin de l\'envoi.';
+            case 0:
+                return 'Connexion interrompue pendant l\'envoi';
+            default:
+                return 'Erreur ' + xhr.status + detail;
+        }
+    }
+
     // Upload asynchrone unitaire
     function uploadSingleFile(file, password, onProgress) {
         return new Promise((resolve, reject) => {
@@ -243,15 +268,15 @@
                     try {
                         resolve(JSON.parse(xhr.responseText));
                     } catch(err) {
-                        reject('Erreur de réponse');
+                        reject('Réponse illisible du serveur');
                     }
                 } else {
-                    reject('Erreur serveur');
+                    reject(describeUploadError(xhr));
                 }
             };
 
             xhr.onerror = function() {
-                reject('Erreur réseau');
+                reject('Erreur réseau : connexion interrompue pendant l\'envoi');
             };
 
             xhr.send(formData);
@@ -281,6 +306,7 @@
         let totalSize = filesToUpload.reduce((acc, f) => acc + f.size, 0);
         let globalLoaded = 0;
         let hasError = false;
+        let lastError = '';
 
         for (let i = 0; i < filesToUpload.length; i++) {
             const file = filesToUpload[i];
@@ -305,11 +331,17 @@
                 `;
             } catch (error) {
                 hasError = true;
-                actionDiv.innerHTML = '<span class="text-xs text-red-500">Échec</span>';
+                lastError = String(error);
+                actionDiv.innerHTML = '<span class="text-xs text-red-500" title="'
+                    + lastError.replace(/"/g, '&quot;') + '">Échec</span>';
             }
         }
 
         progressText.textContent = hasError ? 'Terminé avec des erreurs' : 'Téléversement terminé avec succès !';
+        if (hasError) {
+            document.getElementById('message').innerHTML =
+                '<span class="text-red-500 dark:text-red-400">' + lastError + '</span>';
+        }
         progressBar.style.width = '100%';
         submitBtn.disabled = false;
         
