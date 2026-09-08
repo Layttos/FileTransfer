@@ -67,7 +67,7 @@ func HandleAdminDashboard(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, "/admin/login", http.StatusFound)
 		return
 	}
-	http.ServeFile(w, req, "./public/admin/dashboard.html")
+	serveHTML(w, req, "./public/admin/dashboard.html")
 }
 
 func HandleAdminLogin(w http.ResponseWriter, req *http.Request) {
@@ -75,11 +75,11 @@ func HandleAdminLogin(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, "/admin/dashboard", http.StatusFound)
 		return
 	}
-	http.ServeFile(w, req, "./public/admin/login.html")
+	serveHTML(w, req, "./public/admin/login.html")
 }
 
 func HandleAdminRegister(w http.ResponseWriter, req *http.Request) {
-	http.ServeFile(w, req, "./public/admin/signin.html")
+	serveHTML(w, req, "./public/admin/signin.html")
 }
 
 /* Telechargement administrateur */
@@ -371,9 +371,20 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 /* Connexion et inscription */
 
 func adminLogin(w http.ResponseWriter, req *http.Request, p rqBody) {
-	identifier := strings.TrimSpace(p.Username)
+	// Les pages de connexion d'avant les sessions envoyaient la chaine litterale
+	// "UNDEFINED" dans le champ inutilise. Un navigateur servant encore la page
+	// depuis son cache ne doit pas se voir refuser des identifiants corrects.
+	clean := func(v string) string {
+		v = strings.TrimSpace(v)
+		if strings.EqualFold(v, "UNDEFINED") {
+			return ""
+		}
+		return v
+	}
+
+	identifier := clean(p.Username)
 	if identifier == "" {
-		identifier = strings.TrimSpace(p.Email)
+		identifier = clean(p.Email)
 	}
 	if identifier == "" || p.Password == "" {
 		writeErr(w, http.StatusBadRequest, "Identifiant et mot de passe requis")

@@ -103,6 +103,16 @@ func requireAdmin(w http.ResponseWriter, req *http.Request) (*postsql.AdminUser,
 	return user, token, true
 }
 
+// serveHTML sert une page en forcant le navigateur a revalider.
+// Sans Cache-Control explicite, seul Last-Modified est envoye et les navigateurs
+// appliquent leur cache heuristique : une page mise a jour peut alors rester
+// invisible pendant des heures, avec un JavaScript perime qui dialogue avec un
+// serveur qui, lui, a change.
+func serveHTML(w http.ResponseWriter, req *http.Request, path string) {
+	w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+	http.ServeFile(w, req, path)
+}
+
 /* Reponses JSON */
 
 func writeJSON(w http.ResponseWriter, status int, payload interface{}) {

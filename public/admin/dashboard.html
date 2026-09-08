@@ -745,6 +745,51 @@ const CAT_ICON = {
     auth: 'shield', upload: 'upload', download: 'download',
     file: 'files', personal: 'cloud', admin: 'users', system: 'journal'
 };
+// Libelles lisibles. La base garde des codes stables (utiles au filtrage),
+// l'interface les traduit — y compris pour les entrees deja enregistrees.
+const ACTION_LABEL = {
+    'depot': 'Fichier déposé',
+    'depot-interrompu': 'Dépôt interrompu',
+    'telechargement': 'Fichier téléchargé',
+    'telechargement-admin': 'Téléchargé depuis l\'administration',
+    'apercu': 'Fichier prévisualisé',
+    'introuvable': 'Fichier introuvable',
+    'mot-de-passe-refuse': 'Mot de passe du fichier refusé',
+    'connexion': 'Connexion',
+    'connexion-refusee': 'Connexion refusée',
+    'deconnexion': 'Déconnexion',
+    'mot-de-passe-valide': 'Mot de passe validé, passkey attendue',
+    'passkey-enregistree': 'Passkey enregistrée',
+    'passkey-revoquee': 'Passkey révoquée',
+    'passkey-renommee': 'Passkey renommée',
+    'passkey-refusee': 'Passkey refusée',
+    'session-revoquee': 'Session déconnectée',
+    'sessions-revoquees': 'Sessions déconnectées',
+    'mot-de-passe-change': 'Mot de passe changé',
+    'methode-connexion-changee': 'Méthode de connexion changée',
+    'suppression': 'Fichier supprimé',
+    'renommage': 'Fichier renommé',
+    'changement-identifiant': 'Identifiant changé',
+    'deplacement': 'Fichier déplacé',
+    'compte-cree': 'Compte administrateur créé',
+    'compte-supprime': 'Compte administrateur supprimé',
+    'invitation-creee': 'Invitation créée',
+    'invitation-supprimee': 'Invitation supprimée',
+    'demarrage': 'Serveur démarré'
+};
+function actionLabel(code) {
+    if (ACTION_LABEL[code]) return ACTION_LABEL[code];
+    // Repli : on rend lisible un code inconnu plutôt que d'afficher des tirets.
+    const t = String(code || '').replace(/-/g, ' ');
+    return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+// Une cible vide, ou le "UNDEFINED" hérité des anciennes pages, ne s'affiche pas.
+function showTarget(t) {
+    if (!t) return false;
+    return String(t).trim().toUpperCase() !== 'UNDEFINED';
+}
+
 const LEVEL_STYLE = {
     info:  'text-slate-500 dark:text-slate-400',
     warn:  'text-amber-600 dark:text-amber-400',
@@ -782,10 +827,10 @@ async function loadJournal(page) {
                         '<span class="' + (LEVEL_STYLE[e.level] || '') + '">' + icon(CAT_ICON[e.category] || 'journal') + '</span>' +
                         '<div class="min-w-0 flex-1">' +
                             '<div class="flex flex-wrap items-baseline gap-x-2">' +
-                                '<p class="strong text-sm font-medium">' + esc(e.action.replace(/-/g, ' ')) + '</p>' +
+                                '<p class="strong text-sm font-medium">' + esc(actionLabel(e.action)) + '</p>' +
                                 '<span class="muted text-[11px]">' + esc(CAT_LABEL[e.category] || e.category) + '</span>' +
                             '</div>' +
-                            (e.target ? '<p class="muted mt-0.5 break-all text-xs"><code>' + esc(e.target) + '</code></p>' : '') +
+                            (showTarget(e.target) ? '<p class="muted mt-0.5 break-all text-xs"><code>' + esc(e.target) + '</code></p>' : '') +
                             (e.detail ? '<p class="muted mt-0.5 break-words text-xs">' + esc(e.detail) + '</p>' : '') +
                             '<p class="muted mt-1 text-[11px]">' + humanDate(e.at) + ' · ' + esc(e.actor) +
                                 (e.ip_addr ? ' · ' + esc(e.ip_addr) : '') + '</p>' +

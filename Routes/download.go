@@ -21,12 +21,12 @@ func HandleFile(w http.ResponseWriter, req *http.Request) {
 
 		if postsql.Exists(id) == false {
 			auditAnon(req, postsql.LevelWarn, postsql.CatDownload, "introuvable", id, "")
-			http.ServeFile(w, req, "public/404.html")
+			serveHTML(w, req, "public/404.html")
 			return
 		}
 
 		if len(req.URL.Query()) == 0 {
-			http.ServeFile(w, req, "public/download.html")
+			serveHTML(w, req, "public/download.html")
 			return
 		}
 
