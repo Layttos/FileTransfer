@@ -55,6 +55,7 @@
                             <span class="h-px flex-1 bg-gray-300 dark:bg-gray-600"></span>
                         </div>
                         <button id="passkey-btn" type="button" class="w-full rounded-md border border-indigo-500 px-6 py-3 text-base font-semibold text-indigo-600 transition hover:cursor-pointer hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10">Se connecter avec une passkey</button>
+                        <p id="passkey-state" class="mt-2 text-xs text-gray-500 dark:text-gray-400"></p>
                     </div>
                 </form>
             </div>
@@ -245,17 +246,39 @@
     // Autocompletion des passkeys : proposee des le chargement de la page, sans
     // clic. Sans cet appel, aucun gestionnaire de mots de passe ne peut savoir
     // que le site accepte les passkeys.
+    const stateLine = document.getElementById('passkey-state');
+    function state(text) {
+        stateLine.textContent = text;
+        console.log('[passkey] ' + text);
+    }
+
     (async function armConditionalPasskey() {
-        if (!passkeysSupported) return;
-        if (typeof PublicKeyCredential.isConditionalMediationAvailable !== 'function') return;
+        if (!passkeysSupported) {
+            state("Passkeys non gérées par ce navigateur (HTTPS requis).");
+            return;
+        }
+        if (typeof PublicKeyCredential.isConditionalMediationAvailable !== 'function') {
+            state("Ce navigateur ne gère pas l'autocomplétion des passkeys. Utilisez le bouton ci-dessus.");
+            return;
+        }
         try {
-            if (!(await PublicKeyCredential.isConditionalMediationAvailable())) return;
+            if (!(await PublicKeyCredential.isConditionalMediationAvailable())) {
+                state("Autocomplétion des passkeys indisponible ici. Utilisez le bouton ci-dessus.");
+                return;
+            }
+            state("Autocomplétion active — touchez le champ identifiant pour choisir votre passkey.");
+
             await passkeyCeremony('', true);
             info('Connexion reussie');
             window.location.href = '/admin/dashboard';
         } catch (e) {
-            // Annulation, absence de passkey, ou saisie classique : on ne dit rien,
-            // le formulaire mot de passe reste disponible.
+            // Une annulation volontaire ou le passage au mot de passe ne sont pas
+            // des erreurs : on ne les signale pas. Le reste, si.
+            if (e && (e.name === 'AbortError' || e.name === 'NotAllowedError')) {
+                state('');
+                return;
+            }
+            state('Autocomplétion indisponible : ' + (e && (e.message || e.name) || 'raison inconnue'));
         }
     })();
 

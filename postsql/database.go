@@ -9,6 +9,7 @@ import (
 	rnd "math/rand"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx"
@@ -514,6 +515,68 @@ func ListFiles(index, max int) []FileInfo {
 	}
 
 	return files
+}
+
+// likeEscaper neutralise les jokers d'un motif ILIKE.
+var likeEscaper = strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`)
+
+// SearchFiles renvoie les transferts correspondant a une recherche, les plus
+// recents d'abord, avec le nombre total de resultats pour la pagination.
+// Une recherche vide equivaut a lister tous les fichiers.
+func SearchFiles(search string, offset, limit int) ([]FileInfo, int64) {
+	ReconnectDB()
+	files := []FileInfo{}
+
+	where := "1 = 1"
+	args := []interface{}{}
+
+	// La recherche porte sur le nom, l'identifiant court et l'IP de depot :
+	// ce sont les trois pistes dont on dispose pour retrouver un transfert.
+	if term := strings.TrimSpace(search); term != "" {
+		// % et _ sont des jokers pour ILIKE : sans echappement, chercher
+		// "mon_fichier" remonterait aussi "monXfichier", et "%" remonterait tout.
+		term = likeEscaper.Replace(term)
+		args = append(args, "%"+term+"%")
+		where = `(file_name ILIKE $1 ESCAPE '\' OR id ILIKE $1 ESCAPE '\' OR ip_addr ILIKE $1 ESCAPE '\')`
+	}
+
+	var total int64
+	if err := connPool.QueryRow(
+		"SELECT COUNT(*) FROM file_transfer WHERE "+where, args...).Scan(&total); err != nil {
+		manageErr(err)
+		return files, 0
+	}
+
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	args = append(args, limit, offset)
+
+	query := fmt.Sprintf(
+		"SELECT id, file_name, file_size, ip_addr, date, has_passwd FROM file_transfer "+
+			"WHERE %s ORDER BY date DESC LIMIT $%d OFFSET $%d",
+		where, len(args)-1, len(args))
+
+	rows, err := connPool.Query(query, args...)
+	if err != nil {
+		manageErr(err)
+		return files, total
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var file FileInfo
+		if err := rows.Scan(&file.ID, &file.FileName, &file.FileSize,
+			&file.IPAddr, &file.Date, &file.HasPasswd); err != nil {
+			manageErr(err)
+			return files, total
+		}
+		files = append(files, file)
+	}
+	return files, total
 }
 
 func DeleteFile(id string) bool {

@@ -180,6 +180,13 @@
         <!-- Fichiers publics -->
         <section id="panel-files" class="panel space-y-4">
             <div id="storage-card-files" class="card rounded-lg border p-4 shadow-sm"></div>
+            <div class="card rounded-lg border p-3 shadow-sm md:p-4">
+                <label for="files-search" class="sr-only">Rechercher un fichier</label>
+                <input id="files-search" type="search" inputmode="search"
+                       placeholder="Rechercher : nom de fichier, identifiant ou IP…"
+                       class="w-full rounded-md border px-3 py-2.5 text-sm">
+                <p id="files-count" class="muted mt-2 text-xs"></p>
+            </div>
             <div id="files-list" class="space-y-2"></div>
             <div class="flex items-center justify-between gap-2">
                 <button id="files-prev" class="btn rounded-md border px-4 py-2 text-sm disabled:opacity-40">Précédent</button>
@@ -307,6 +314,9 @@
 
     </main>
 </div>
+
+<!-- Menu contextuel du cloud personnel -->
+<div id="ctx" class="card fixed z-50 hidden min-w-[13rem] overflow-hidden rounded-lg border py-1 shadow-2xl" role="menu"></div>
 
 <script>
 /* ---------- Thème ---------- */
@@ -507,11 +517,21 @@ function actionBtn(act, id, iconName, label, danger) {
 async function loadFiles(page) {
     filesPage = Math.max(1, page);
     loadStorage();
+    const term = document.getElementById('files-search').value.trim();
     try {
-        const list = await api('list_files', {}, '?offset=' + ((filesPage - 1) * PER_PAGE) + '&limit=' + PER_PAGE);
+        const data = await api('list_files', { search: term },
+            '?offset=' + ((filesPage - 1) * PER_PAGE) + '&limit=' + PER_PAGE);
+        const list = data.files || [];
+        const total = data.total || 0;
+
+        document.getElementById('files-count').textContent = term
+            ? (total + ' résultat(s) pour « ' + term + ' »')
+            : (total + ' fichier(s) au total');
+
         const box = document.getElementById('files-list');
         if (!list.length) {
-            box.innerHTML = '<p class="muted py-8 text-center text-sm">Aucun fichier</p>';
+            box.innerHTML = '<p class="muted py-8 text-center text-sm">' +
+                (term ? 'Aucun fichier ne correspond à cette recherche' : 'Aucun fichier') + '</p>';
         } else {
             box.innerHTML = list.map(function (f) {
                 return '<div class="card rounded-lg border p-3 shadow-sm">' +
@@ -533,13 +553,21 @@ async function loadFiles(page) {
                     '</div></div>';
             }).join('');
         }
-        document.getElementById('files-page').textContent = 'Page ' + filesPage;
+        const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+        document.getElementById('files-page').textContent = 'Page ' + filesPage + ' / ' + pages;
         document.getElementById('files-prev').disabled = filesPage === 1;
-        document.getElementById('files-next').disabled = list.length < PER_PAGE;
+        document.getElementById('files-next').disabled = filesPage >= pages;
     } catch (e) { toast(e.message, true); }
 }
 document.getElementById('files-prev').addEventListener('click', function () { loadFiles(filesPage - 1); });
 document.getElementById('files-next').addEventListener('click', function () { loadFiles(filesPage + 1); });
+
+let filesSearchTimer;
+document.getElementById('files-search').addEventListener('input', function () {
+    clearTimeout(filesSearchTimer);
+    // Toute nouvelle recherche repart de la premiere page.
+    filesSearchTimer = setTimeout(function () { loadFiles(1); }, 350);
+});
 
 document.getElementById('files-list').addEventListener('click', async function (ev) {
     const btn = ev.target.closest('button[data-act]');
@@ -589,13 +617,13 @@ async function loadCloud(folder) {
         document.getElementById('cloud-up').disabled = currentFolder === '/';
 
         const folders = data.folders.map(function (f) {
-            return '<button data-folder="' + esc(f) + '" class="card flex flex-col items-center gap-2 rounded-lg border p-4 text-center transition hover:border-indigo-400">' +
+            return '<button data-folder="' + esc(f) + '" data-kind="folder" data-name="' + esc(f) + '" class="card flex flex-col items-center gap-2 rounded-lg border p-4 text-center transition hover:border-indigo-400">' +
                 '<span class="text-amber-500">' + icon('folder', 'h-10 w-10') + '</span>' +
                 '<span class="strong ellipsis w-full text-xs font-medium">' + esc(f) + '</span></button>';
         });
 
         const files = data.files.map(function (f) {
-            return '<div class="card flex flex-col rounded-lg border p-3 transition hover:border-indigo-400">' +
+            return '<div data-kind="file" data-id="' + esc(f.id) + '" data-name="' + esc(f.file_name) + '" class="card flex flex-col rounded-lg border p-3 transition hover:border-indigo-400">' +
                 '<div class="flex flex-col items-center gap-2 text-center">' +
                     '<span class="text-indigo-600 dark:text-indigo-400">' + icon(iconForFile(f.file_name), 'h-10 w-10') + '</span>' +
                     '<span class="strong ellipsis w-full text-xs font-medium" title="' + esc(f.file_name) + '">' + esc(f.file_name) + '</span>' +
@@ -779,6 +807,144 @@ let logSearchTimer;
 document.getElementById('log-search').addEventListener('input', function () {
     clearTimeout(logSearchTimer);
     logSearchTimer = setTimeout(function () { loadJournal(1); }, 350);
+});
+
+/* ---------- Menu contextuel du cloud ---------- */
+const ctx = document.getElementById('ctx');
+
+function closeCtx() { ctx.classList.add('hidden'); }
+
+function openCtx(x, y, items) {
+    ctx.innerHTML = items.map(function (it) {
+        if (it.sep) return '<div class="rowline my-1 border-t"></div>';
+        return '<button data-cmd="' + it.cmd + '" role="menuitem" ' +
+            'class="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition hover:bg-black/5 dark:hover:bg-white/5 ' +
+            (it.danger ? 'text-red-600 dark:text-red-400' : '') + '">' +
+            icon(it.icon, 'icon h-4 w-4') + '<span>' + esc(it.label) + '</span></button>';
+    }).join('');
+
+    // On affiche d'abord pour mesurer, puis on repositionne dans la fenêtre.
+    ctx.classList.remove('hidden');
+    ctx.style.left = '0px';
+    ctx.style.top = '0px';
+    const r = ctx.getBoundingClientRect();
+    const left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8));
+    const top = Math.max(8, Math.min(y, window.innerHeight - r.height - 8));
+    ctx.style.left = left + 'px';
+    ctx.style.top = top + 'px';
+}
+
+// Cible courante du menu : { kind: 'file'|'folder'|'empty', id, name }
+let ctxTarget = { kind: 'empty' };
+
+function menuFor(target) {
+    if (target.kind === 'file') {
+        return [
+            { cmd: 'open',     icon: 'download', label: 'Télécharger' },
+            { cmd: 'preview',  icon: 'file',     label: 'Ouvrir dans le navigateur' },
+            { sep: true },
+            { cmd: 'rename',   icon: 'edit',     label: 'Renommer' },
+            { cmd: 'move',     icon: 'move',     label: 'Déplacer vers…' },
+            { cmd: 'copylink', icon: 'tag',      label: 'Copier le lien' },
+            { sep: true },
+            { cmd: 'delete',   icon: 'trash',    label: 'Supprimer', danger: true }
+        ];
+    }
+    if (target.kind === 'folder') {
+        return [
+            { cmd: 'openfolder', icon: 'folder', label: 'Ouvrir' },
+            { sep: true },
+            { cmd: 'upload',     icon: 'upload', label: 'Envoyer un fichier ici' }
+        ];
+    }
+    return [
+        { cmd: 'upload',  icon: 'upload',  label: 'Envoyer un fichier' },
+        { cmd: 'mkdir',   icon: 'folder',  label: 'Nouveau dossier' },
+        { sep: true },
+        { cmd: 'up',      icon: 'back',    label: 'Dossier parent' },
+        { cmd: 'refresh', icon: 'journal', label: 'Actualiser' }
+    ];
+}
+
+function targetFromEvent(ev) {
+    const el = ev.target.closest('[data-kind]');
+    if (!el) return { kind: 'empty' };
+    return { kind: el.dataset.kind, id: el.dataset.id, name: el.dataset.name };
+}
+
+const cloudPanel = document.getElementById('panel-cloud');
+
+cloudPanel.addEventListener('contextmenu', function (ev) {
+    ev.preventDefault();
+    ctxTarget = targetFromEvent(ev);
+    openCtx(ev.clientX, ev.clientY, menuFor(ctxTarget));
+});
+
+// Appui long : équivalent tactile du clic droit, absent sur téléphone.
+let pressTimer = null, pressMoved = false;
+cloudPanel.addEventListener('touchstart', function (ev) {
+    pressMoved = false;
+    const touch = ev.touches[0];
+    const target = targetFromEvent(ev);
+    pressTimer = setTimeout(function () {
+        if (pressMoved) return;
+        ctxTarget = target;
+        if (navigator.vibrate) navigator.vibrate(15);
+        openCtx(touch.clientX, touch.clientY, menuFor(target));
+    }, 500);
+}, { passive: true });
+cloudPanel.addEventListener('touchmove', function () { pressMoved = true; clearTimeout(pressTimer); }, { passive: true });
+cloudPanel.addEventListener('touchend', function () { clearTimeout(pressTimer); }, { passive: true });
+
+document.addEventListener('click', function (ev) { if (!ctx.contains(ev.target)) closeCtx(); });
+document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') closeCtx(); });
+window.addEventListener('scroll', closeCtx, true);
+window.addEventListener('resize', closeCtx);
+
+ctx.addEventListener('click', async function (ev) {
+    const btn = ev.target.closest('button[data-cmd]');
+    if (!btn) return;
+    closeCtx();
+    const t = ctxTarget;
+    const dl = '/admin/personal/download?id=' + encodeURIComponent(t.id || '');
+
+    try {
+        switch (btn.dataset.cmd) {
+            case 'open':     window.location.href = dl; break;
+            case 'preview':  window.open(dl + '&preview=true', '_blank', 'noopener'); break;
+            case 'copylink':
+                await navigator.clipboard.writeText(new URL(dl, window.location.origin).href);
+                toast('Lien copié');
+                break;
+            case 'rename': {
+                const name = prompt('Nouveau nom :', t.name || '');
+                if (!name) return;
+                await api('personal_rename', { fileID: t.id, newFileName: name });
+                toast('Fichier renommé');
+                loadCloud(currentFolder);
+                break;
+            }
+            case 'move': {
+                const dest = prompt('Déplacer vers quel dossier ?', currentFolder);
+                if (dest === null) return;
+                await api('personal_move', { fileID: t.id, folder: dest });
+                toast('Fichier déplacé');
+                loadCloud(currentFolder);
+                break;
+            }
+            case 'delete':
+                if (!confirm('Supprimer « ' + (t.name || 'ce fichier') + ' » ?')) return;
+                await api('personal_delete', { fileID: t.id });
+                toast('Fichier supprimé');
+                loadCloud(currentFolder);
+                break;
+            case 'openfolder': loadCloud(currentFolder + t.name + '/'); break;
+            case 'upload':     document.getElementById('cloud-file').click(); break;
+            case 'mkdir':      document.getElementById('cloud-mkdir').click(); break;
+            case 'up':         document.getElementById('cloud-up').click(); break;
+            case 'refresh':    loadCloud(currentFolder); toast('Actualisé'); break;
+        }
+    } catch (e) { toast(e.message, true); }
 });
 
 /* ---------- WebAuthn ---------- */

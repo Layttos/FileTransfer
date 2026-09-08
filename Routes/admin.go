@@ -200,7 +200,8 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			writeErr(w, http.StatusBadRequest, "offset ou limit invalide")
 			return
 		}
-		writeOK(w, postsql.ListFiles(offset, limit))
+		files, total := postsql.SearchFiles(p.Search, offset, limit)
+		writeOK(w, map[string]interface{}{"files": files, "total": total})
 
 	case "delete":
 		if !postsql.Exists(p.FileID) {

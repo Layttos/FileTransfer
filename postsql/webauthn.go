@@ -138,11 +138,23 @@ func AddCredential(userID int, name string, cred *webauthn.Credential) error {
 	if err != nil {
 		return err
 	}
-	_, err = connPool.Exec(`
+	if _, err = connPool.Exec(`
 		INSERT INTO admin_credentials (user_id, name, credential_id, credential_json, sign_count)
 		VALUES ($1, $2, $3, $4, $5);`,
-		userID, name, cred.ID, raw, int64(cred.Authenticator.SignCount))
-	return err
+		userID, name, cred.ID, raw, int64(cred.Authenticator.SignCount)); err != nil {
+		return err
+	}
+
+	// Une passkey enregistree doit servir immediatement. Sans cela le compte reste
+	// en "mot de passe seul" et le serveur refuse la connexion par passkey, sans
+	// que rien ne l'explique a l'utilisateur. On ne touche pas a une politique
+	// deja choisie explicitement (deux facteurs).
+	if _, err := connPool.Exec(
+		"UPDATE users SET auth_policy = $1 WHERE id = $2 AND auth_policy = $3;",
+		PolicyPasskeyOrPassword, userID, PolicyPassword); err != nil {
+		fmt.Fprintf(os.Stderr, "Activation de la passkey pour la connexion impossible : %v\n", err)
+	}
+	return nil
 }
 
 // RenameCredential change le libelle d'une passkey.
