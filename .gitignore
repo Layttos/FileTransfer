@@ -2,7 +2,7 @@
 .env
 .env-PROD
 .env.local
-docker-compose.override.yml
+docker-compose.override.yml*
 
 # Fichiers envoyés par les utilisateurs
 uploads/
