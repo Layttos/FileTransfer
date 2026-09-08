@@ -7,7 +7,36 @@
     <title>Tableau de bord | Administration</title>
     <link rel="shortcut icon" href="../img/favicon.png" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <!-- Editeur de texte. Charge depuis un CDN comme Tailwind ; si le
+         chargement echoue, l'interface bascule sur un simple textarea. -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/material-darker.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/dialog/dialog.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/foldgutter.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/meta.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/mode/loadmode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/dialog/dialog.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/search/searchcursor.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/search/search.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/search/jump-to-line.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/selection/active-line.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/comment/comment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/foldcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/foldgutter.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/brace-fold.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/xml-fold.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/indent-fold.min.js"></script>
     <style>
+        .CodeMirror { height: 100%; font-size: 13px; }
+        #viewer-body .CodeMirror { border-radius: 0; }
+        #editor-fallback { width: 100%; height: 100%; resize: none; border: 0; outline: none;
+                           padding: 1rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                           font-size: 13px; }
+
         html[data-theme="light"] body { background-color: #f3f4f6 !important; color: #111827 !important; }
         html[data-theme="dark"]  body { background-color: #0f172a !important; color: #f8fafc !important; }
         html[data-theme="light"] .card { background-color: #ffffff !important; border-color: #e5e7eb !important; }
@@ -332,6 +361,21 @@
     </main>
 </div>
 
+<!-- Visualiseur et éditeur -->
+<div id="viewer" class="fixed inset-0 z-50 hidden flex-col bg-black/85">
+    <header class="side flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2">
+        <span id="viewer-icon" class="text-indigo-600 dark:text-indigo-400"></span>
+        <div class="min-w-0 flex-1">
+            <p id="viewer-name" class="strong ellipsis text-sm font-medium"></p>
+            <p id="viewer-meta" class="muted text-[11px]"></p>
+        </div>
+        <button id="viewer-save" class="btn hidden rounded-md bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700">Enregistrer</button>
+        <a id="viewer-dl" class="btn flex items-center rounded-md border px-3 py-2 text-xs" download>Télécharger</a>
+        <button id="viewer-close" class="btn flex items-center rounded-md border px-3 py-2 text-xs" aria-label="Fermer">Fermer</button>
+    </header>
+    <div id="viewer-body" class="flex min-h-0 flex-1 items-center justify-center overflow-auto"></div>
+</div>
+
 <!-- Résultat d'un partage -->
 <div id="share-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
     <div class="card w-full max-w-md rounded-lg border p-5 shadow-2xl">
@@ -639,10 +683,16 @@ function breadcrumb(folder) {
     return html;
 }
 
+let cloudFiles = [];
+function fileById(id) {
+    return cloudFiles.filter(function (f) { return f.id === id; })[0] || null;
+}
+
 async function loadCloud(folder) {
     try {
         const data = await api('personal_list', { folder: folder });
         currentFolder = data.folder;
+        cloudFiles = data.files || [];
         document.getElementById('cloud-breadcrumb').innerHTML = breadcrumb(currentFolder);
         document.getElementById('cloud-up').disabled = currentFolder === '/';
 
@@ -653,7 +703,7 @@ async function loadCloud(folder) {
         });
 
         const files = data.files.map(function (f) {
-            return '<div data-kind="file" data-id="' + esc(f.id) + '" data-name="' + esc(f.file_name) + '" class="card flex flex-col rounded-lg border p-3 transition hover:border-indigo-400">' +
+            return '<div data-kind="file" data-id="' + esc(f.id) + '" data-name="' + esc(f.file_name) + '" data-size="' + f.file_size + '" class="card flex flex-col rounded-lg border p-3 transition hover:border-indigo-400">' +
                 '<div class="flex flex-col items-center gap-2 text-center">' +
                     '<span class="text-indigo-600 dark:text-indigo-400">' + icon(iconForFile(f.file_name), 'h-10 w-10') + '</span>' +
                     '<span class="strong ellipsis w-full text-xs font-medium" title="' + esc(f.file_name) + '">' + esc(f.file_name) + '</span>' +
@@ -682,6 +732,22 @@ document.getElementById('cloud-up').addEventListener('click', function () {
     loadCloud('/' + parts.join('/'));
 });
 document.getElementById('cloud-mkdir').addEventListener('click', function () { createFolder(); });
+// Double-clic : ouvrir le fichier, entrer dans le dossier — comme un explorateur.
+document.getElementById('cloud-grid').addEventListener('dblclick', function (ev) {
+    const folderBtn = ev.target.closest('button[data-folder]');
+    if (folderBtn) { loadCloud(currentFolder + folderBtn.dataset.folder + '/'); return; }
+
+    const card = ev.target.closest('[data-kind="file"]');
+    if (!card || ev.target.closest('button, a')) return;
+    const f = fileById(card.dataset.id);
+    if (!f) return;
+    if (canPreview(f.file_name) || canEdit(f.file_name, f.file_size)) {
+        openViewer(f);
+    } else {
+        window.location.href = '/admin/personal/download?id=' + encodeURIComponent(f.id);
+    }
+});
+
 document.getElementById('cloud-grid').addEventListener('click', async function (ev) {
     const folderBtn = ev.target.closest('button[data-folder]');
     if (folderBtn) { loadCloud(currentFolder + folderBtn.dataset.folder + '/'); return; }
@@ -798,7 +864,14 @@ const ACTION_LABEL = {
     'compte-supprime': 'Compte administrateur supprimé',
     'invitation-creee': 'Invitation créée',
     'invitation-supprimee': 'Invitation supprimée',
-    'demarrage': 'Serveur démarré'
+    'demarrage': 'Serveur démarré',
+    'dossier-cree': 'Dossier créé',
+    'dossier-renomme': 'Dossier renommé',
+    'dossier-supprime': 'Dossier supprimé',
+    'archive-dossier': 'Dossier téléchargé en .zip',
+    'fichier-cree': 'Fichier créé',
+    'fichier-modifie': 'Fichier modifié',
+    'partage-public': 'Fichier partagé publiquement'
 };
 function actionLabel(code) {
     if (ACTION_LABEL[code]) return ACTION_LABEL[code];
@@ -877,6 +950,186 @@ document.getElementById('log-search').addEventListener('input', function () {
     logSearchTimer = setTimeout(function () { loadJournal(1); }, 350);
 });
 
+/* ---------- Visualiseur et éditeur ---------- */
+const CM_BASE = 'https://cdn.jsdelivr.net/npm/codemirror@5.65.16';
+const cmAvailable = typeof window.CodeMirror !== 'undefined';
+if (cmAvailable) CodeMirror.modeURL = CM_BASE + '/mode/%N/%N.min.js';
+
+// Ce qui s'affiche directement, et ce qui s'ouvre dans l'éditeur.
+const PREVIEWABLE = { image: 1, video: 1, audio: 1, pdf: 1 };
+const EDITABLE = { code: 1, text: 1, sheet: 1, file: 1 };
+const MAX_EDIT = 2 * 1024 * 1024; // aligné sur la limite du serveur
+
+function canPreview(name) { return !!PREVIEWABLE[iconForFile(name)]; }
+function canEdit(name, size) { return !!EDITABLE[iconForFile(name)] && size <= MAX_EDIT; }
+
+const viewer = document.getElementById('viewer');
+const viewerBody = document.getElementById('viewer-body');
+const viewerSave = document.getElementById('viewer-save');
+let cmEditor = null;      // instance CodeMirror, ou null si repli textarea
+let viewerFile = null;    // fichier ouvert
+let viewerDirty = false;
+
+function markDirty(on) {
+    viewerDirty = on;
+    viewerSave.textContent = on ? 'Enregistrer •' : 'Enregistrer';
+}
+
+function closeViewer(force) {
+    if (!force && viewerDirty && !confirm('Modifications non enregistrées. Fermer quand même ?')) return;
+    viewer.classList.add('hidden');
+    viewer.classList.remove('flex');
+    viewerBody.innerHTML = '';
+    cmEditor = null;
+    viewerFile = null;
+    markDirty(false);
+    viewerSave.classList.add('hidden');
+}
+document.getElementById('viewer-close').addEventListener('click', function () { closeViewer(false); });
+
+async function openViewer(file) {
+    viewerFile = file;
+    const url = '/admin/personal/download?id=' + encodeURIComponent(file.id);
+    const kind = iconForFile(file.file_name);
+
+    document.getElementById('viewer-icon').innerHTML = icon(kind, 'icon-lg');
+    document.getElementById('viewer-name').textContent = file.file_name;
+    document.getElementById('viewer-meta').textContent = humanSize(file.file_size);
+    document.getElementById('viewer-dl').href = url;
+    viewerSave.classList.add('hidden');
+    markDirty(false);
+    viewerBody.innerHTML = '<p class="muted p-8 text-sm">Chargement…</p>';
+    viewer.classList.remove('hidden');
+    viewer.classList.add('flex');
+
+    const src = url + '&preview=true';
+
+    if (kind === 'image') {
+        viewerBody.innerHTML = '<img src="' + src + '" alt="' + esc(file.file_name) +
+            '" class="max-h-full max-w-full object-contain">';
+        return;
+    }
+    if (kind === 'video') {
+        viewerBody.innerHTML = '<video src="' + src + '" controls autoplay playsinline ' +
+            'class="max-h-full max-w-full"></video>';
+        return;
+    }
+    if (kind === 'audio') {
+        viewerBody.innerHTML = '<div class="w-full max-w-lg p-6 text-center">' +
+            '<span class="text-indigo-400">' + icon('audio', 'mx-auto h-16 w-16') + '</span>' +
+            '<p class="mt-3 text-sm text-white">' + esc(file.file_name) + '</p>' +
+            '<audio src="' + src + '" controls autoplay class="mt-4 w-full"></audio></div>';
+        return;
+    }
+    if (kind === 'pdf') {
+        viewerBody.innerHTML = '<iframe src="' + src + '" class="h-full w-full border-0" ' +
+            'title="' + esc(file.file_name) + '"></iframe>';
+        return;
+    }
+
+    // Fichier texte ou source : on charge le contenu dans l'éditeur.
+    if (file.file_size > MAX_EDIT) {
+        viewerBody.innerHTML = '<p class="muted p-8 text-center text-sm">' +
+            'Fichier trop volumineux pour l\'éditeur (' + humanSize(file.file_size) +
+            ', maximum ' + humanSize(MAX_EDIT) + '). Téléchargez-le pour le consulter.</p>';
+        return;
+    }
+
+    let content;
+    try {
+        const res = await fetch(src, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('Lecture impossible (' + res.status + ')');
+        content = await res.text();
+    } catch (e) {
+        viewerBody.innerHTML = '<p class="p-8 text-center text-sm text-red-400">' + esc(e.message) + '</p>';
+        return;
+    }
+
+    viewerBody.innerHTML = '';
+    viewerBody.classList.remove('items-center', 'justify-center');
+    viewerSave.classList.remove('hidden');
+
+    if (!cmAvailable) {
+        // Repli : le CDN n'a pas répondu, on édite quand même.
+        const ta = document.createElement('textarea');
+        ta.id = 'editor-fallback';
+        ta.value = content;
+        ta.addEventListener('input', function () { markDirty(true); });
+        viewerBody.appendChild(ta);
+        document.getElementById('viewer-meta').textContent =
+            humanSize(file.file_size) + ' · éditeur simplifié (coloration indisponible)';
+        return;
+    }
+
+    cmEditor = CodeMirror(viewerBody, {
+        value: content,
+        lineNumbers: true,
+        lineWrapping: true,
+        matchBrackets: true,
+        autoCloseBrackets: true,
+        styleActiveLine: true,
+        foldGutter: true,
+        gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+        theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'material-darker' : 'default',
+        extraKeys: {
+            'Ctrl-S': saveViewer, 'Cmd-S': saveViewer,
+            'Ctrl-/': 'toggleComment', 'Cmd-/': 'toggleComment'
+        }
+    });
+    cmEditor.on('change', function () { markDirty(true); });
+
+    // Détection du langage d'après le nom, puis chargement du mode à la demande.
+    const info = CodeMirror.findModeByFileName(file.file_name);
+    if (info) {
+        cmEditor.setOption('mode', info.mime || info.mode);
+        CodeMirror.autoLoadMode(cmEditor, info.mode);
+        document.getElementById('viewer-meta').textContent =
+            humanSize(file.file_size) + ' · ' + info.name;
+    }
+    cmEditor.focus();
+}
+
+async function saveViewer() {
+    if (!viewerFile) return;
+    const fallback = document.getElementById('editor-fallback');
+    const content = cmEditor ? cmEditor.getValue() : (fallback ? fallback.value : null);
+    if (content === null) return;
+
+    try {
+        const res = await fetch('/admin/personal/save?id=' + encodeURIComponent(viewerFile.id), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+            body: content
+        });
+        const data = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(data.error || ('Erreur ' + res.status));
+
+        viewerFile.file_size = data.file_size;
+        document.getElementById('viewer-meta').textContent = humanSize(data.file_size);
+        markDirty(false);
+        toast('Fichier enregistré');
+        loadCloud(currentFolder);
+    } catch (e) { toast(e.message, true); }
+}
+viewerSave.addEventListener('click', saveViewer);
+
+// Ctrl+S enregistre même quand le focus n'est pas dans l'éditeur.
+document.addEventListener('keydown', function (ev) {
+    if ((ev.ctrlKey || ev.metaKey) && ev.key === 's' && !viewer.classList.contains('hidden')) {
+        ev.preventDefault();
+        saveViewer();
+    }
+});
+
+// Le thème de l'éditeur suit celui du site.
+document.getElementById('themeToggle').addEventListener('click', function () {
+    if (cmEditor) {
+        cmEditor.setOption('theme',
+            document.documentElement.getAttribute('data-theme') === 'dark' ? 'material-darker' : 'default');
+    }
+});
+
 /* ---------- Menu contextuel du cloud ---------- */
 const ctx = document.getElementById('ctx');
 
@@ -907,7 +1160,15 @@ let ctxTarget = { kind: 'empty' };
 
 function menuFor(target) {
     if (target.kind === 'file') {
-        return [
+        const head = [];
+        if (canPreview(target.name)) {
+            head.push({ cmd: 'view', icon: iconForFile(target.name), label: 'Prévisualiser' });
+        } else if (canEdit(target.name, target.size)) {
+            head.push({ cmd: 'view', icon: 'code', label: 'Modifier dans l\'éditeur' });
+        }
+        if (head.length) head.push({ sep: true });
+
+        return head.concat([
             { cmd: 'open',      icon: 'download',   label: 'Télécharger' },
             { cmd: 'preview',   icon: 'file',       label: 'Ouvrir dans le navigateur' },
             { sep: true },
@@ -919,7 +1180,7 @@ function menuFor(target) {
             { cmd: 'copylink',  icon: 'tag',        label: 'Copier le lien privé' },
             { sep: true },
             { cmd: 'delete',    icon: 'trash',      label: 'Supprimer', danger: true }
-        ];
+        ]);
     }
     if (target.kind === 'folder') {
         return [
@@ -947,7 +1208,10 @@ function menuFor(target) {
 function targetFromEvent(ev) {
     const el = ev.target.closest('[data-kind]');
     if (!el) return { kind: 'empty' };
-    return { kind: el.dataset.kind, id: el.dataset.id, name: el.dataset.name };
+    return {
+        kind: el.dataset.kind, id: el.dataset.id, name: el.dataset.name,
+        size: Number(el.dataset.size || 0)
+    };
 }
 
 const cloudPanel = document.getElementById('panel-cloud');
@@ -976,7 +1240,10 @@ cloudPanel.addEventListener('touchend', function () { clearTimeout(pressTimer); 
 
 document.addEventListener('click', function (ev) { if (!ctx.contains(ev.target)) closeCtx(); });
 document.addEventListener('keydown', function (ev) {
-    if (ev.key === 'Escape') { closeCtx(); closeShare(); }
+    if (ev.key !== 'Escape') return;
+    closeCtx();
+    closeShare();
+    if (!viewer.classList.contains('hidden')) closeViewer(false);
 });
 window.addEventListener('scroll', closeCtx, true);
 window.addEventListener('resize', closeCtx);
@@ -1018,6 +1285,11 @@ ctx.addEventListener('click', async function (ev) {
     try {
         switch (btn.dataset.cmd) {
             /* --- Fichiers --- */
+            case 'view': {
+                const f = fileById(t.id);
+                if (f) openViewer(f);
+                break;
+            }
             case 'open':     window.location.href = dl; break;
             case 'preview':  window.open(dl + '&preview=true', '_blank', 'noopener'); break;
             case 'copylink':

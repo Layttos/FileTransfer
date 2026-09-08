@@ -194,3 +194,60 @@ func HandlePersonalZip(w http.ResponseWriter, req *http.Request) {
 	audit(req, user, postsql.LevelInfo, postsql.CatPersonal, "archive-dossier", folder,
 		fmt.Sprintf("%d fichier(s)", len(files)))
 }
+
+// maxEditableSize borne ce que l'editeur de texte accepte de charger et de
+// reenregistrer. Au-dela, le navigateur peinerait et l'interet disparait.
+const maxEditableSize = 2 << 20 // 2 Mio
+
+// HandlePersonalSave remplace le contenu d'un fichier de l'espace personnel.
+// L'ecriture passe par un fichier temporaire suivi d'un renommage : une
+// sauvegarde interrompue laisse l'original intact plutot qu'un fichier tronque.
+func HandlePersonalSave(w http.ResponseWriter, req *http.Request) {
+	user, _, ok := requireAdmin(w, req)
+	if !ok {
+		return
+	}
+	if req.Method != http.MethodPost {
+		writeErr(w, http.StatusMethodNotAllowed, "Methode non autorisee")
+		return
+	}
+
+	f, found := postsql.PersonalGet(user.ID, req.URL.Query().Get("id"))
+	if !found {
+		writeErr(w, http.StatusNotFound, "Fichier introuvable")
+		return
+	}
+
+	body, err := io.ReadAll(io.LimitReader(req.Body, maxEditableSize+1))
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "Lecture du contenu impossible")
+		return
+	}
+	if len(body) > maxEditableSize {
+		writeErr(w, http.StatusRequestEntityTooLarge,
+			"Fichier trop volumineux pour l'editeur (2 Mio maximum)")
+		return
+	}
+
+	finalPath := postsql.PersonalPath(user.ID, f.ID, f.FileName)
+	tmpPath := finalPath + ".tmp-save"
+
+	if err := os.WriteFile(tmpPath, body, 0o644); err != nil {
+		writeErr(w, http.StatusInternalServerError, "Ecriture impossible : "+err.Error())
+		return
+	}
+	if err := os.Rename(tmpPath, finalPath); err != nil {
+		os.Remove(tmpPath)
+		writeErr(w, http.StatusInternalServerError, "Remplacement impossible : "+err.Error())
+		return
+	}
+
+	size := int64(len(body))
+	if err := postsql.PersonalSetSize(user.ID, f.ID, size); err != nil {
+		fmt.Fprintf(os.Stderr, "Taille non mise a jour pour %s : %v\n", f.ID, err)
+	}
+
+	audit(req, user, postsql.LevelInfo, postsql.CatPersonal, "fichier-modifie", f.ID,
+		fmt.Sprintf("%s (%d octets)", f.FileName, size))
+	writeOK(w, map[string]interface{}{"status": "SAVED", "file_size": size})
+}

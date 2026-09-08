@@ -431,3 +431,11 @@ func copyFile(from, to string) error {
 	}
 	return out.Close()
 }
+
+// PersonalSetSize met a jour la taille enregistree apres modification du contenu.
+func PersonalSetSize(userID int, id string, size int64) error {
+	ReconnectDB()
+	_, err := connPool.Exec(
+		"UPDATE personal_files SET file_size = $1 WHERE id = $2 AND user_id = $3;", size, id, userID)
+	return err
+}
