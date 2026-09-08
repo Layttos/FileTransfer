@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"archive/zip"
 	"filetransfer-backend/postsql"
 	"fmt"
 	"io"
@@ -134,4 +135,62 @@ func HandlePersonalDownload(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 	}
 	http.ServeFile(w, req, fullPath)
+}
+
+// HandlePersonalZip envoie un dossier de l'espace personnel sous forme
+// d'archive zip, construite en flux : rien n'est ecrit sur le disque ni garde
+// en memoire, un dossier de plusieurs gigaoctets passe donc sans difficulte.
+func HandlePersonalZip(w http.ResponseWriter, req *http.Request) {
+	user, _ := currentAdmin(req)
+	if user == nil {
+		http.Redirect(w, req, "/admin/login", http.StatusFound)
+		return
+	}
+
+	folder := postsql.NormalizeFolder(req.URL.Query().Get("folder"))
+	files := postsql.FolderTree(user.ID, folder)
+
+	name := "cloud"
+	if folder != "/" {
+		parts := strings.Split(strings.Trim(folder, "/"), "/")
+		name = parts[len(parts)-1]
+	}
+
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+sanitizeFilename(name)+".zip\"")
+
+	zw := zip.NewWriter(w)
+	defer zw.Close()
+
+	for _, f := range files {
+		// Chemin relatif au dossier demande, pour conserver l'arborescence.
+		rel := strings.TrimPrefix(f.Folder, folder) + f.FileName
+
+		header := &zip.FileHeader{Name: rel, Method: zip.Deflate, Modified: f.CreatedAt}
+		entry, err := zw.CreateHeader(header)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Archive : entree %s impossible : %v\n", rel, err)
+			return
+		}
+
+		src, err := os.Open(postsql.PersonalPath(user.ID, f.ID, f.FileName))
+		if err != nil {
+			// Un fichier absent du disque ne doit pas faire echouer toute l'archive.
+			fmt.Fprintf(os.Stderr, "Archive : %s illisible, ignore : %v\n", rel, err)
+			continue
+		}
+
+		buffer := bufferPool.Get().([]byte)
+		_, err = io.CopyBuffer(entry, src, buffer)
+		bufferPool.Put(buffer)
+		src.Close()
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Archive : copie de %s interrompue : %v\n", rel, err)
+			return
+		}
+	}
+
+	audit(req, user, postsql.LevelInfo, postsql.CatPersonal, "archive-dossier", folder,
+		fmt.Sprintf("%d fichier(s)", len(files)))
 }

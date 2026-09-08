@@ -125,6 +125,22 @@
     <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M15 5h3a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-3"/><path d="M11 8 7 12l4 4M7 12h9"/>
     </symbol>
+    <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/>
+        <path d="m8.2 10.8 7.6-4.1M8.2 13.2l7.6 4.1"/>
+    </symbol>
+    <symbol id="i-share-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="6" cy="12" r="2.5"/><path d="m8.3 10.9 4-2.2"/>
+        <rect x="13" y="12" width="8" height="6" rx="1.5"/><path d="M15 12V9.8a2 2 0 0 1 4 0V12"/>
+    </symbol>
+    <symbol id="i-file-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/>
+        <path d="M12 12v5m-2.5-2.5h5"/>
+    </symbol>
+    <symbol id="i-folder-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>
+        <path d="M12 10.5v5m-2.5-2.5h5"/>
+    </symbol>
     <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M15 5l-7 7 7 7"/>
     </symbol>
@@ -314,6 +330,19 @@
         </section>
 
     </main>
+</div>
+
+<!-- Résultat d'un partage -->
+<div id="share-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+    <div class="card w-full max-w-md rounded-lg border p-5 shadow-2xl">
+        <h2 id="share-title" class="strong mb-1 text-lg font-semibold">Fichier partagé</h2>
+        <p id="share-sub" class="muted mb-4 text-sm"></p>
+        <input id="share-url" type="text" readonly class="w-full rounded-md border px-3 py-2.5 text-sm">
+        <div class="mt-4 flex flex-wrap gap-2">
+            <button id="share-copy" class="btn flex-1 rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">Copier le lien</button>
+            <button id="share-close" class="btn rounded-md border px-4 py-2.5 text-sm">Fermer</button>
+        </div>
+    </div>
 </div>
 
 <!-- Menu contextuel du cloud personnel -->
@@ -652,14 +681,7 @@ document.getElementById('cloud-up').addEventListener('click', function () {
     parts.pop();
     loadCloud('/' + parts.join('/'));
 });
-document.getElementById('cloud-mkdir').addEventListener('click', function () {
-    const name = prompt('Nom du nouveau dossier :');
-    if (!name) return;
-    const clean = name.replace(/[\/\\]/g, '').trim();
-    if (!clean) return;
-    toast('Dossier ouvert — envoyez-y un fichier pour le conserver');
-    loadCloud(currentFolder + clean + '/');
-});
+document.getElementById('cloud-mkdir').addEventListener('click', function () { createFolder(); });
 document.getElementById('cloud-grid').addEventListener('click', async function (ev) {
     const folderBtn = ev.target.closest('button[data-folder]');
     if (folderBtn) { loadCloud(currentFolder + folderBtn.dataset.folder + '/'); return; }
@@ -886,29 +908,39 @@ let ctxTarget = { kind: 'empty' };
 function menuFor(target) {
     if (target.kind === 'file') {
         return [
-            { cmd: 'open',     icon: 'download', label: 'Télécharger' },
-            { cmd: 'preview',  icon: 'file',     label: 'Ouvrir dans le navigateur' },
+            { cmd: 'open',      icon: 'download',   label: 'Télécharger' },
+            { cmd: 'preview',   icon: 'file',       label: 'Ouvrir dans le navigateur' },
             { sep: true },
-            { cmd: 'rename',   icon: 'edit',     label: 'Renommer' },
-            { cmd: 'move',     icon: 'move',     label: 'Déplacer vers…' },
-            { cmd: 'copylink', icon: 'tag',      label: 'Copier le lien' },
+            { cmd: 'share',     icon: 'share',      label: 'Partager publiquement' },
+            { cmd: 'sharepass', icon: 'share-lock', label: 'Partager avec un mot de passe' },
             { sep: true },
-            { cmd: 'delete',   icon: 'trash',    label: 'Supprimer', danger: true }
+            { cmd: 'rename',    icon: 'edit',       label: 'Renommer' },
+            { cmd: 'move',      icon: 'move',       label: 'Déplacer vers…' },
+            { cmd: 'copylink',  icon: 'tag',        label: 'Copier le lien privé' },
+            { sep: true },
+            { cmd: 'delete',    icon: 'trash',      label: 'Supprimer', danger: true }
         ];
     }
     if (target.kind === 'folder') {
         return [
-            { cmd: 'openfolder', icon: 'folder', label: 'Ouvrir' },
+            { cmd: 'openfolder',  icon: 'folder',  label: 'Ouvrir' },
+            { cmd: 'zipfolder',   icon: 'archive', label: 'Télécharger en .zip' },
             { sep: true },
-            { cmd: 'upload',     icon: 'upload', label: 'Envoyer un fichier ici' }
+            { cmd: 'renamefolder', icon: 'edit',   label: 'Renommer' },
+            { cmd: 'upload',      icon: 'upload',  label: 'Envoyer un fichier ici' },
+            { sep: true },
+            { cmd: 'delfolder',   icon: 'trash',   label: 'Supprimer le dossier', danger: true }
         ];
     }
     return [
-        { cmd: 'upload',  icon: 'upload',  label: 'Envoyer un fichier' },
-        { cmd: 'mkdir',   icon: 'folder',  label: 'Nouveau dossier' },
+        { cmd: 'mkdir',    icon: 'folder-plus', label: 'Nouveau dossier' },
+        { cmd: 'mkfile',   icon: 'file-plus',   label: 'Nouveau fichier' },
+        { cmd: 'upload',   icon: 'upload',      label: 'Envoyer un fichier' },
         { sep: true },
-        { cmd: 'up',      icon: 'back',    label: 'Dossier parent' },
-        { cmd: 'refresh', icon: 'journal', label: 'Actualiser' }
+        { cmd: 'ziphere',  icon: 'archive',     label: 'Télécharger ce dossier en .zip' },
+        { sep: true },
+        { cmd: 'up',       icon: 'back',        label: 'Dossier parent' },
+        { cmd: 'refresh',  icon: 'journal',     label: 'Actualiser' }
     ];
 }
 
@@ -943,9 +975,36 @@ cloudPanel.addEventListener('touchmove', function () { pressMoved = true; clearT
 cloudPanel.addEventListener('touchend', function () { clearTimeout(pressTimer); }, { passive: true });
 
 document.addEventListener('click', function (ev) { if (!ctx.contains(ev.target)) closeCtx(); });
-document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') closeCtx(); });
+document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { closeCtx(); closeShare(); }
+});
 window.addEventListener('scroll', closeCtx, true);
 window.addEventListener('resize', closeCtx);
+
+/* Fenêtre affichant le lien d'un partage */
+const shareModal = document.getElementById('share-modal');
+function openShare(url, protected_) {
+    document.getElementById('share-sub').textContent = protected_
+        ? "Le destinataire devra saisir le mot de passe pour télécharger."
+        : "Toute personne disposant de ce lien peut télécharger le fichier.";
+    document.getElementById('share-url').value = url;
+    shareModal.classList.remove('hidden');
+    shareModal.classList.add('flex');
+    document.getElementById('share-url').select();
+}
+function closeShare() {
+    shareModal.classList.add('hidden');
+    shareModal.classList.remove('flex');
+}
+document.getElementById('share-close').addEventListener('click', closeShare);
+shareModal.addEventListener('click', function (ev) { if (ev.target === shareModal) closeShare(); });
+document.getElementById('share-copy').addEventListener('click', function () {
+    const url = document.getElementById('share-url').value;
+    navigator.clipboard.writeText(url).then(function () { toast('Lien copié'); }, function () {
+        document.getElementById('share-url').select();
+        toast('Copiez le lien sélectionné', true);
+    });
+});
 
 ctx.addEventListener('click', async function (ev) {
     const btn = ev.target.closest('button[data-cmd]');
@@ -953,15 +1012,30 @@ ctx.addEventListener('click', async function (ev) {
     closeCtx();
     const t = ctxTarget;
     const dl = '/admin/personal/download?id=' + encodeURIComponent(t.id || '');
+    // Chemin complet du dossier visé, le menu ne connaît que son nom.
+    const folderPath = t.kind === 'folder' ? currentFolder + t.name + '/' : currentFolder;
 
     try {
         switch (btn.dataset.cmd) {
+            /* --- Fichiers --- */
             case 'open':     window.location.href = dl; break;
             case 'preview':  window.open(dl + '&preview=true', '_blank', 'noopener'); break;
             case 'copylink':
                 await navigator.clipboard.writeText(new URL(dl, window.location.origin).href);
-                toast('Lien copié');
+                toast('Lien privé copié — il exige votre session administrateur');
                 break;
+            case 'share': {
+                const r = await api('personal_share', { fileID: t.id, sharePassword: '' });
+                openShare(r.url, false);
+                break;
+            }
+            case 'sharepass': {
+                const pass = prompt('Mot de passe exigé pour télécharger :');
+                if (!pass) return;
+                const r = await api('personal_share', { fileID: t.id, sharePassword: pass });
+                openShare(r.url, true);
+                break;
+            }
             case 'rename': {
                 const name = prompt('Nouveau nom :', t.name || '');
                 if (!name) return;
@@ -984,14 +1058,63 @@ ctx.addEventListener('click', async function (ev) {
                 toast('Fichier supprimé');
                 loadCloud(currentFolder);
                 break;
-            case 'openfolder': loadCloud(currentFolder + t.name + '/'); break;
-            case 'upload':     document.getElementById('cloud-file').click(); break;
-            case 'mkdir':      document.getElementById('cloud-mkdir').click(); break;
-            case 'up':         document.getElementById('cloud-up').click(); break;
-            case 'refresh':    loadCloud(currentFolder); toast('Actualisé'); break;
+
+            /* --- Dossiers --- */
+            case 'openfolder': loadCloud(folderPath); break;
+            case 'zipfolder':
+                window.location.href = '/admin/personal/zip?folder=' + encodeURIComponent(folderPath);
+                break;
+            case 'ziphere':
+                window.location.href = '/admin/personal/zip?folder=' + encodeURIComponent(currentFolder);
+                break;
+            case 'renamefolder': {
+                const name = prompt('Nouveau nom du dossier :', t.name || '');
+                if (!name) return;
+                await api('folder_rename', { folder: folderPath, newFileName: name });
+                toast('Dossier renommé');
+                loadCloud(currentFolder);
+                break;
+            }
+            case 'delfolder':
+                if (!confirm('Supprimer le dossier « ' + t.name + " » et tout son contenu ?")) return;
+                {
+                    const r = await api('folder_delete', { folder: folderPath });
+                    toast('Dossier supprimé (' + r.files + ' fichier(s))');
+                    loadCloud(currentFolder);
+                }
+                break;
+
+            /* --- Fond --- */
+            case 'upload':   document.getElementById('cloud-file').click(); break;
+            case 'mkdir':    createFolder(); break;
+            case 'mkfile':   createFile(); break;
+            case 'up':       document.getElementById('cloud-up').click(); break;
+            case 'refresh':  loadCloud(currentFolder); toast('Actualisé'); break;
         }
     } catch (e) { toast(e.message, true); }
 });
+
+async function createFolder() {
+    const name = prompt('Nom du nouveau dossier :');
+    if (!name) return;
+    const clean = name.replace(/[\/\\]/g, '').trim();
+    if (!clean) return;
+    try {
+        await api('folder_create', { folder: currentFolder + clean + '/' });
+        toast('Dossier créé');
+        loadCloud(currentFolder);
+    } catch (e) { toast(e.message, true); }
+}
+
+async function createFile() {
+    const name = prompt('Nom du nouveau fichier :', 'notes.txt');
+    if (!name) return;
+    try {
+        await api('personal_create', { folder: currentFolder, fileName: name });
+        toast('Fichier créé');
+        loadCloud(currentFolder);
+    } catch (e) { toast(e.message, true); }
+}
 
 /* ---------- WebAuthn ---------- */
 function b64urlToBuf(s) {

@@ -56,6 +56,18 @@ func migrate(conn *pgx.Conn) {
 		);`,
 		`CREATE INDEX IF NOT EXISTS personal_files_user_idx ON personal_files (user_id);`,
 
+		// Dossiers du cloud personnel. Ils etaient jusqu'ici deduits des fichiers
+		// qu'ils contenaient, ce qui interdisait un dossier vide, un renommage ou
+		// une suppression. Le listing reste l'union de ces lignes et des dossiers
+		// impliques par les fichiers, pour rester compatible avec l'existant.
+		`CREATE TABLE IF NOT EXISTS personal_folders (
+			id         SERIAL PRIMARY KEY,
+			user_id    INTEGER NOT NULL,
+			path       VARCHAR(512) NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS personal_folders_unique ON personal_folders (user_id, path);`,
+
 		// Journal d'audit : tout ce qui se passe sur le site, du depot anonyme
 		// d'un fichier a la revocation d'une passkey.
 		`CREATE TABLE IF NOT EXISTS audit_log (

@@ -10,10 +10,6 @@ import (
 	"strings"
 )
 
-var reqBody struct {
-	Password string `json:"X-File-Password"`
-}
-
 func HandleFile(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 
@@ -47,20 +43,18 @@ func HandleFile(w http.ResponseWriter, req *http.Request) {
 
 		if isDownload || isPreview {
 
-			if postsql.HasPassword(id) == true {
-				// Décentralisation de la vérification du mdp (azy la condition était tarpin longue sinon)
-				if verifyPassword(id, req) {
-					auditAnon(req, postsql.LevelWarn, postsql.CatDownload, "mot-de-passe-refuse", id,
-						postsql.GetFileName(id))
-					w.Header().Set("Content-Type", "application/json")
-					response := map[string]interface{}{
-						"error": "Le mot de passe est requis pour ce fichier ou vous avez entré le mauvais mot de passe",
-					}
-
-					json.NewEncoder(w).Encode(response)
-					return
-
-				}
+			// La condition etait inversee : le fichier n'etait refuse que lorsque le
+			// mot de passe etait CORRECT, et servi sinon. Tout fichier protege etait
+			// donc telechargeable sans mot de passe.
+			if postsql.HasPassword(id) && !passwordAccepted(id, req) {
+				auditAnon(req, postsql.LevelWarn, postsql.CatDownload, "mot-de-passe-refuse", id,
+					postsql.GetFileName(id))
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": "Le mot de passe est requis pour ce fichier ou vous avez entré le mauvais mot de passe",
+				})
+				return
 			}
 
 			action := "telechargement"
@@ -86,15 +80,18 @@ func HandleFile(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(`{"id": "` + id + `"}`)
 }
 
-func verifyPassword(id string, req *http.Request) bool {
-
-	_ = json.NewDecoder(req.Body).Decode(&reqBody)
-	password := req.Header.Get("X-File-Password")
-
-	if len(req.URL.Query()) == 1 || req.URL.Query().Get("password") == "" || postsql.IsPassword(id, req.URL.Query().Get("password")) == false || password == "" || !postsql.IsPassword(id, password) {
-		return false
+// passwordAccepted verifie le mot de passe d'un fichier protege. Il peut arriver
+// par l'en-tete X-File-Password, ce qu'envoie la page de telechargement, ou par
+// le parametre d'URL pour un lien direct. L'ancienne version exigeait les deux
+// a la fois, ce qu'aucun client n'envoyait.
+func passwordAccepted(id string, req *http.Request) bool {
+	if candidate := req.URL.Query().Get("password"); candidate != "" && postsql.IsPassword(id, candidate) {
+		return true
 	}
-	return true
+	if candidate := req.Header.Get("X-File-Password"); candidate != "" && postsql.IsPassword(id, candidate) {
+		return true
+	}
+	return false
 }
 
 func parseSize(bytes int64) string {

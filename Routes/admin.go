@@ -39,7 +39,9 @@ type rqBody struct {
 	Token   string `json:"token"`
 
 	// Cloud personnel
-	Folder string `json:"folder"`
+	Folder    string `json:"folder"`
+	FileName  string `json:"fileName"`
+	SharePass string `json:"sharePassword"`
 
 	// Journal
 	Category string `json:"category"`
@@ -362,6 +364,64 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 		}
 		audit(req, user, postsql.LevelInfo, postsql.CatPersonal, "deplacement", p.FileID, p.Folder)
 		writeOK(w, map[string]string{"status": "PERSONAL_MOVED"})
+
+	case "folder_create":
+		path, err := postsql.CreateFolder(user.ID, p.Folder)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		audit(req, user, postsql.LevelInfo, postsql.CatPersonal, "dossier-cree", path, "")
+		writeOK(w, map[string]string{"status": "FOLDER_CREATED", "folder": path})
+
+	case "folder_delete":
+		n, err := postsql.DeleteFolder(user.ID, p.Folder)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		audit(req, user, postsql.LevelWarn, postsql.CatPersonal, "dossier-supprime", p.Folder,
+			fmt.Sprintf("%d fichier(s) supprime(s)", n))
+		writeOK(w, map[string]interface{}{"status": "FOLDER_DELETED", "files": n})
+
+	case "folder_rename":
+		path, err := postsql.RenameFolder(user.ID, p.Folder, p.NewName)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		audit(req, user, postsql.LevelInfo, postsql.CatPersonal, "dossier-renomme", p.Folder,
+			"devient "+path)
+		writeOK(w, map[string]string{"status": "FOLDER_RENAMED", "folder": path})
+
+	case "personal_create":
+		f, err := postsql.PersonalCreateFile(user.ID, p.Folder, p.FileName)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		audit(req, user, postsql.LevelInfo, postsql.CatPersonal, "fichier-cree", f.ID,
+			f.Folder+f.FileName)
+		writeOK(w, map[string]interface{}{"status": "FILE_CREATED", "file": f})
+
+	case "personal_share":
+		publicID, err := postsql.ShareToPublic(user.ID, p.FileID, p.SharePass)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		protege := "lien public"
+		if p.SharePass != "" {
+			protege = "protege par mot de passe"
+		}
+		audit(req, user, postsql.LevelWarn, postsql.CatPersonal, "partage-public", publicID,
+			protege)
+		writeOK(w, map[string]interface{}{
+			"status":    "SHARED",
+			"id":        publicID,
+			"url":       publicOrigin(req) + "/" + publicID,
+			"protected": p.SharePass != "",
+		})
 
 	default:
 		writeErr(w, http.StatusBadRequest, "Action inconnue")

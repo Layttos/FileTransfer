@@ -53,6 +53,7 @@ func main() {
 	http.HandleFunc(`/admin/download`, routes.HandleAdminDownload)
 	http.HandleFunc(`/admin/personal/upload`, routes.HandlePersonalUpload)
 	http.HandleFunc(`/admin/personal/download`, routes.HandlePersonalDownload)
+	http.HandleFunc(`/admin/personal/zip`, routes.HandlePersonalZip)
 	http.HandleFunc(`/admin/webauthn/register/begin`, routes.HandleWebAuthnRegisterBegin)
 	http.HandleFunc(`/admin/webauthn/register/finish`, routes.HandleWebAuthnRegisterFinish)
 	http.HandleFunc(`/admin/webauthn/login/begin`, routes.HandleWebAuthnLoginBegin)
