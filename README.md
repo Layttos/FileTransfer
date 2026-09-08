@@ -16,6 +16,7 @@
 Self-hosted file transfer with no size limit, plus an administration panel:
 
 - **Transfers** streamed straight to disk, resumable, optionally password-protected
+- **Encrypted at rest** (AES-256-GCM), compressed when it actually helps
 - **One-command deployment**, PostgreSQL included, no configuration file needed
 - **Admin dashboard** with an audit journal, storage usage, and file search
 - **Personal cloud** per administrator, with a file explorer, media preview and a
@@ -334,34 +335,36 @@ automatically on start, so upgrading needs no manual SQL.
 
 ### Encryption at rest
 
-Every stored file is encrypted with **AES-256-GCM**, in 1 MiB frames, each frame
-sealed under a nonce derived from its index — so frames cannot be reordered, and
-the last one is marked, so the file cannot be silently truncated. Each file gets
-its own key derived from the master key and a per-file salt.
+Files are encrypted on upload and decrypted on download. Nothing to configure,
+nothing to do differently — it is transparent from the outside.
 
-Files that compress are also compressed with **zstd**, decided by probing the
-first frame. Already-compressed content — video, archives, photos — is stored raw,
-because compressing it gains nothing and would cost throughput.
+Under the hood: **AES-256-GCM** in 1 MiB frames, each sealed under a nonce derived
+from its index so frames cannot be reordered, and the last one marked so the file
+cannot be silently truncated. Each file has its own key, derived from the master
+key and a salt stored in its header.
 
-Uncompressed frames all have the same length, so a byte offset maps to a frame
-arithmetically: **range requests keep working**, and so do resumable downloads and
+Files that actually compress are also run through **zstd**, decided by probing the
+first frame. Video, archives and photos are stored raw: compressing them gains
+nothing and only costs throughput.
+
+Uncompressed frames all have the same length, so a byte offset maps to a frame by
+arithmetic — **range requests keep working**, and with them resumable downloads and
 seeking inside a video.
 
-Measured on a Haswell core with AES-NI: AES-256-GCM runs at 2.6 GB/s, well above
-what disk and network deliver. Serving a 1.5 GiB file went from ~2400 MB/s to
-~605 MB/s on loopback with a warm cache — the untouched path uses `sendfile()`,
-which encryption necessarily gives up — but still comfortably above a real network
-path. Uploads are within a few percent of the plaintext figure.
-
 > [!IMPORTANT]
-> **What this protects against.** A stolen disk, a leaked backup, a misplaced copy
-> of the storage directory. It does **not** protect against someone who controls
-> the running server: the key is there, by design, because previews, the editor and
-> administrative downloads all need to read the files.
+> **What this protects against**: a stolen disk, a leaked backup, a stray copy of
+> the storage folder. **Not** someone who controls the running server — the key is
+> there by design, because previews, the editor and admin downloads must read the
+> files.
 >
-> If `STORAGE_KEY` is not set, the key is generated next to the data it protects,
-> which means a backup of the folder carries both. Put it in the environment and
-> delete the file for the protection to be real.
+> Set `STORAGE_KEY` in your environment. Left empty, the key is generated *next to
+> the data it protects*, so a backup of the folder carries both and the protection
+> is largely moot. Keep a copy somewhere safe: without the key, the files are
+> unrecoverable.
+
+```bash
+openssl rand -hex 32   # then put it in STORAGE_KEY and delete uploads/.storage-key
+```
 
 > [!NOTE]
 > A file's password protects its share link, not its content against whoever runs
