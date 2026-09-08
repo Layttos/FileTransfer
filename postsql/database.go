@@ -520,6 +520,32 @@ func ListFiles(index, max int) []FileInfo {
 // likeEscaper neutralise les jokers d'un motif ILIKE.
 var likeEscaper = strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`)
 
+// globToLike traduit un motif de style explorateur de fichiers (*.zip,
+// photo?.jpg) en motif ILIKE : * devient %, ? devient _. Les jokers SQL deja
+// presents dans le terme sont echappes pour rester litteraux.
+// Renvoie false si le terme ne contient aucun joker : seule la recherche
+// litterale s'applique alors.
+func globToLike(term string) (string, bool) {
+	if !strings.ContainsAny(term, "*?") {
+		return "", false
+	}
+	var sb strings.Builder
+	for _, r := range term {
+		switch r {
+		case '*':
+			sb.WriteByte('%')
+		case '?':
+			sb.WriteByte('_')
+		case '%', '_', '\\':
+			sb.WriteByte('\\')
+			sb.WriteRune(r)
+		default:
+			sb.WriteRune(r)
+		}
+	}
+	return sb.String(), true
+}
+
 // SearchFiles renvoie les transferts correspondant a une recherche, les plus
 // recents d'abord, avec le nombre total de resultats pour la pagination.
 // Une recherche vide equivaut a lister tous les fichiers.
@@ -533,11 +559,28 @@ func SearchFiles(search string, offset, limit int) ([]FileInfo, int64) {
 	// La recherche porte sur le nom, l'identifiant court et l'IP de depot :
 	// ce sont les trois pistes dont on dispose pour retrouver un transfert.
 	if term := strings.TrimSpace(search); term != "" {
-		// % et _ sont des jokers pour ILIKE : sans echappement, chercher
-		// "mon_fichier" remonterait aussi "monXfichier", et "%" remonterait tout.
-		term = likeEscaper.Replace(term)
-		args = append(args, "%"+term+"%")
-		where = `(file_name ILIKE $1 ESCAPE '\' OR id ILIKE $1 ESCAPE '\' OR ip_addr ILIKE $1 ESCAPE '\')`
+		// Deux lectures du terme, reunies par un OR.
+		//
+		// 1. Litterale : % et _ sont des jokers pour ILIKE, on les echappe, sinon
+		//    "mon_fichier" remonterait aussi "monXfichier". C'est aussi ce qui
+		//    permet de retrouver un fichier dont le nom contient vraiment "*.zip".
+		// 2. Glob : *.zip ou photo?.jpg sont traduits en motifs LIKE, pour
+		//    chercher par extension comme dans un explorateur de fichiers.
+		conds := []string{
+			`file_name ILIKE $1 ESCAPE '\'`,
+			`id ILIKE $1 ESCAPE '\'`,
+			`ip_addr ILIKE $1 ESCAPE '\'`,
+		}
+		args = append(args, "%"+likeEscaper.Replace(term)+"%")
+
+		if pattern, ok := globToLike(term); ok {
+			args = append(args, pattern)
+			conds = append(conds,
+				`file_name ILIKE $2 ESCAPE '\'`,
+				`id ILIKE $2 ESCAPE '\'`,
+				`ip_addr ILIKE $2 ESCAPE '\'`)
+		}
+		where = "(" + strings.Join(conds, " OR ") + ")"
 	}
 
 	var total int64

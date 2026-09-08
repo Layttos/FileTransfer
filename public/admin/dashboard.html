@@ -183,9 +183,10 @@
             <div class="card rounded-lg border p-3 shadow-sm md:p-4">
                 <label for="files-search" class="sr-only">Rechercher un fichier</label>
                 <input id="files-search" type="search" inputmode="search"
-                       placeholder="Rechercher : nom de fichier, identifiant ou IP…"
+                       placeholder="Rechercher : nom, *.zip, photo?.jpg, identifiant ou IP…"
                        class="w-full rounded-md border px-3 py-2.5 text-sm">
                 <p id="files-count" class="muted mt-2 text-xs"></p>
+                <p class="muted mt-1 text-[11px]">Jokers acceptés : <code>*</code> remplace n\'importe quelle suite de caractères, <code>?</code> un seul.</p>
             </div>
             <div id="files-list" class="space-y-2"></div>
             <div class="flex items-center justify-between gap-2">
