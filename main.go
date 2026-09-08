@@ -3,6 +3,7 @@ package main
 import (
 	routes "filetransfer-backend/Routes"
 	"filetransfer-backend/postsql"
+	"filetransfer-backend/vault"
 	"fmt"
 	"net/http"
 	"os"
@@ -29,11 +30,25 @@ func main() {
 		port = "3333"
 	}
 
+	filesPath := os.Getenv("FILES_PATH")
+	if filesPath == "" {
+		filesPath = "files"
+	}
+	if err := vault.Init(filesPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Chiffrement du stockage impossible : %v\n", err)
+		os.Exit(1)
+	}
+
 	fmt.Println("Attemping to connect to the PostgreSQL database")
 	postsql.ReconnectDB()
 	defer postsql.Close()
 
 	postsql.StartAuditWriter()
+
+	// Les fichiers deposes avant l'activation du coffre sont convertis en tache
+	// de fond : le service repond pendant ce temps, et ils restent lisibles.
+	go vault.MigrateAll(filesPath)
+
 	postsql.BootstrapAdminInvitation()
 	postsql.PurgeExpiredSessions()
 	postsql.PurgeAudit()

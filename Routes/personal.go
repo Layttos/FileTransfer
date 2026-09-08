@@ -3,6 +3,7 @@ package routes
 import (
 	"archive/zip"
 	"filetransfer-backend/postsql"
+	"filetransfer-backend/vault"
 	"fmt"
 	"io"
 	"net/http"
@@ -69,9 +70,20 @@ func HandlePersonalUpload(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
+		enc, encErr := vault.NewWriter(dest)
+		if encErr != nil {
+			dest.Close()
+			os.RemoveAll(dirPath)
+			writeErr(w, http.StatusInternalServerError, "Chiffrement indisponible")
+			return
+		}
+
 		buffer := bufferPool.Get().([]byte)
-		size, err := io.CopyBuffer(dest, part, buffer)
+		size, err := io.CopyBuffer(enc, part, buffer)
 		bufferPool.Put(buffer)
+		if err == nil {
+			err = enc.Close()
+		}
 		closeErr := dest.Close()
 
 		if err != nil || closeErr != nil {
@@ -119,10 +131,6 @@ func HandlePersonalDownload(w http.ResponseWriter, req *http.Request) {
 	}
 
 	fullPath := postsql.PersonalPath(user.ID, f.ID, f.FileName)
-	if _, err := os.Stat(fullPath); err != nil {
-		http.Error(w, "Fichier absent du disque", http.StatusNotFound)
-		return
-	}
 
 	audit(req, user, postsql.LevelInfo, postsql.CatPersonal, "telechargement", f.ID, f.FileName)
 
@@ -134,7 +142,9 @@ func HandlePersonalDownload(w http.ResponseWriter, req *http.Request) {
 	if disposition == "attachment" {
 		w.Header().Set("Content-Type", "application/octet-stream")
 	}
-	http.ServeFile(w, req, fullPath)
+	if !serveStored(w, req, fullPath, f.FileName) {
+		http.Error(w, "Fichier absent du disque", http.StatusNotFound)
+	}
 }
 
 // HandlePersonalZip envoie un dossier de l'espace personnel sous forme
@@ -173,7 +183,7 @@ func HandlePersonalZip(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		src, err := os.Open(postsql.PersonalPath(user.ID, f.ID, f.FileName))
+		src, err := vault.Open(postsql.PersonalPath(user.ID, f.ID, f.FileName))
 		if err != nil {
 			// Un fichier absent du disque ne doit pas faire echouer toute l'archive.
 			fmt.Fprintf(os.Stderr, "Archive : %s illisible, ignore : %v\n", rel, err)
@@ -232,7 +242,22 @@ func HandlePersonalSave(w http.ResponseWriter, req *http.Request) {
 	finalPath := postsql.PersonalPath(user.ID, f.ID, f.FileName)
 	tmpPath := finalPath + ".tmp-save"
 
-	if err := os.WriteFile(tmpPath, body, 0o644); err != nil {
+	tmp, err := os.Create(tmpPath)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "Ecriture impossible : "+err.Error())
+		return
+	}
+	enc, err := vault.NewWriter(tmp)
+	if err == nil {
+		if _, err = enc.Write(body); err == nil {
+			err = enc.Close()
+		}
+	}
+	if cerr := tmp.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		os.Remove(tmpPath)
 		writeErr(w, http.StatusInternalServerError, "Ecriture impossible : "+err.Error())
 		return
 	}

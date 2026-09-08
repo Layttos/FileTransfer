@@ -63,14 +63,17 @@ func HandleFile(w http.ResponseWriter, req *http.Request) {
 			}
 			auditAnon(req, postsql.LevelInfo, postsql.CatDownload, action, id, postsql.GetFileName(id))
 
-			fullPath := filepath.Join(os.Getenv("FILES_PATH"), id, postsql.GetFileName(id))
+			name := postsql.GetFileName(id)
+			fullPath := filepath.Join(os.Getenv("FILES_PATH"), id, name)
 			if isDownload {
-				w.Header().Set("Content-Disposition", "attachment; filename=\""+postsql.GetFileName(id)+"\"")
+				w.Header().Set("Content-Disposition", "attachment; filename=\""+sanitizeFilename(name)+"\"")
 				w.Header().Set("Content-Type", "application/octet-stream")
 			} else if isPreview {
-				w.Header().Set("Content-Disposition", "inline; filename=\""+postsql.GetFileName(id)+"\"")
+				w.Header().Set("Content-Disposition", "inline; filename=\""+sanitizeFilename(name)+"\"")
 			}
-			http.ServeFile(w, req, fullPath)
+			if !serveStored(w, req, fullPath, name) {
+				http.Error(w, "Fichier absent du disque", http.StatusNotFound)
+			}
 			return
 		}
 

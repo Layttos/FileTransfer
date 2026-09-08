@@ -3,6 +3,7 @@ package routes
 import (
 	"encoding/json"
 	"filetransfer-backend/postsql"
+	"filetransfer-backend/vault"
 	"fmt"
 	"io"
 	"net"
@@ -83,9 +84,21 @@ func HandleUpload(w http.ResponseWriter, rq *http.Request) {
 				return
 			}
 
+			// Le contenu traverse le coffre : chiffre, et compresse s'il s'y prete.
+			enc, encErr := vault.NewWriter(dest)
+			if encErr != nil {
+				dest.Close()
+				os.RemoveAll(dirPath)
+				writeUploadError(w, http.StatusInternalServerError, "Chiffrement indisponible")
+				return
+			}
+
 			buffer := bufferPool.Get().([]byte)
-			size, err := io.CopyBuffer(dest, part, buffer)
+			size, err := io.CopyBuffer(enc, part, buffer)
 			bufferPool.Put(buffer)
+			if err == nil {
+				err = enc.Close()
+			}
 			closeErr := dest.Close()
 
 			// Sur un transfert de plusieurs Go, une coupure client ou un disque plein

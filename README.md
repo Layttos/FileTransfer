@@ -62,6 +62,7 @@ the first `docker compose up`.
 | `POSTGRESQL_DATABASE` / `_USER` / `_PASSWORD` | `filetransfer` | Bundled database credentials. Only read when the volume is first created |
 | `POSTGRESQL_HOST` | `db` | Point it elsewhere to use your own PostgreSQL |
 | `PUBLIC_URL` | `http://localhost:3333` | Public address. Anchors passkeys, so it must match what visitors type |
+| `STORAGE_KEY` | generated on first start | Storage encryption key, 64 hex characters. Left empty, a key is written to `FILES_PATH/.storage-key` |
 | `STORAGE_MAX` | disk capacity | Ceiling shown by the storage bar (`500G`, `2T`, …) |
 | `AUDIT_RETENTION_DAYS` | `90` | Journal retention. `0` never purges |
 | `TZ` | `Europe/Paris` | Timezone |
@@ -313,7 +314,7 @@ transfer can be resumed and a video can be seeked.
 
 ## IV. Stored data
 
-Uploaded files are stored **unencrypted** in `./uploads/` (or in `FILES_PATH`
+Uploaded files are stored **encrypted** in `./uploads/` (or in `FILES_PATH`
 without Docker). Each transfer gets its own directory named after its short ID.
 Personal clouds live beside them, under `personal/u<id>/`.
 
@@ -331,7 +332,40 @@ automatically on start, so upgrading needs no manual SQL.
 | `personal_folders` | Folders of those clouds, including empty ones |
 | `audit_log` | The journal: level, category, action, actor, IP, target, detail, user agent |
 
+### Encryption at rest
+
+Every stored file is encrypted with **AES-256-GCM**, in 1 MiB frames, each frame
+sealed under a nonce derived from its index — so frames cannot be reordered, and
+the last one is marked, so the file cannot be silently truncated. Each file gets
+its own key derived from the master key and a per-file salt.
+
+Files that compress are also compressed with **zstd**, decided by probing the
+first frame. Already-compressed content — video, archives, photos — is stored raw,
+because compressing it gains nothing and would cost throughput.
+
+Uncompressed frames all have the same length, so a byte offset maps to a frame
+arithmetically: **range requests keep working**, and so do resumable downloads and
+seeking inside a video.
+
+Measured on a Haswell core with AES-NI: AES-256-GCM runs at 2.6 GB/s, well above
+what disk and network deliver. Serving a 1.5 GiB file went from ~2400 MB/s to
+~605 MB/s on loopback with a warm cache — the untouched path uses `sendfile()`,
+which encryption necessarily gives up — but still comfortably above a real network
+path. Uploads are within a few percent of the plaintext figure.
+
+> [!IMPORTANT]
+> **What this protects against.** A stolen disk, a leaked backup, a misplaced copy
+> of the storage directory. It does **not** protect against someone who controls
+> the running server: the key is there, by design, because previews, the editor and
+> administrative downloads all need to read the files.
+>
+> If `STORAGE_KEY` is not set, the key is generated next to the data it protects,
+> which means a backup of the folder carries both. Put it in the environment and
+> delete the file for the protection to be real.
+
 > [!NOTE]
 > A file's password protects its share link, not its content against whoever runs
-> the machine. Passwords are hashed with a per-file salt, but the file itself sits
-> in clear on the disk.
+> the machine. Passwords are hashed with a per-file salt.
+
+Files uploaded before encryption was enabled are converted in the background on
+start, and stay readable throughout: the reader accepts both formats.

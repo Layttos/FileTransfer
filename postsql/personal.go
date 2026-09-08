@@ -390,8 +390,7 @@ func ShareToPublic(userID int, fileID, password string) (string, error) {
 	}
 
 	srcPath := PersonalPath(userID, src.ID, src.FileName)
-	info, err := os.Stat(srcPath)
-	if err != nil {
+	if _, err := os.Stat(srcPath); err != nil {
 		return "", fmt.Errorf("fichier absent du disque")
 	}
 
@@ -410,7 +409,9 @@ func ShareToPublic(userID int, fileID, password string) (string, error) {
 		}
 	}
 
-	PushFile(publicID, src.FileName, info.Size(), "cloud personnel", password)
+	// La taille en clair vient de la base : sur le disque, le fichier est chiffre
+	// et parfois compresse, sa taille reelle ne veut plus rien dire pour l'usager.
+	PushFile(publicID, src.FileName, src.FileSize, "cloud personnel", password)
 	return publicID, nil
 }
 

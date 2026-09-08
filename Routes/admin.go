@@ -124,7 +124,9 @@ func HandleAdminDownload(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Disposition", "attachment; filename=\""+sanitizeFilename(name)+"\"")
 	w.Header().Set("Content-Type", "application/octet-stream")
-	http.ServeFile(w, req, fullPath)
+	if !serveStored(w, req, fullPath, name) {
+		http.Error(w, "Fichier absent du disque", http.StatusNotFound)
+	}
 }
 
 // sanitizeFilename neutralise les caracteres qui casseraient l'en-tete.

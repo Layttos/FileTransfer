@@ -3,6 +3,8 @@ package routes
 import (
 	"encoding/json"
 	"filetransfer-backend/postsql"
+	"filetransfer-backend/vault"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -111,6 +113,26 @@ func requireAdmin(w http.ResponseWriter, req *http.Request) (*postsql.AdminUser,
 func serveHTML(w http.ResponseWriter, req *http.Request, path string) {
 	w.Header().Set("Cache-Control", "no-cache, must-revalidate")
 	http.ServeFile(w, req, path)
+}
+
+// serveStored sert un fichier du stockage en le dechiffrant a la volee.
+// http.ServeContent recoit un io.ReadSeeker : les requetes Range restent donc
+// prises en charge, ce dont dependent la reprise de telechargement et le
+// deplacement dans une video.
+func serveStored(w http.ResponseWriter, req *http.Request, path, name string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	r, err := vault.Open(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Ouverture de %s impossible : %v\n", path, err)
+		return false
+	}
+	defer r.Close()
+
+	http.ServeContent(w, req, name, info.ModTime(), r)
+	return true
 }
 
 /* Reponses JSON */
