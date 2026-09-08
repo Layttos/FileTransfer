@@ -34,6 +34,7 @@ func main() {
 	defer postsql.Close()
 
 	postsql.BootstrapAdminInvitation()
+	postsql.PurgeExpiredSessions()
 
 	http.HandleFunc("/upload", routes.HandleUpload)
 	http.HandleFunc("/index", routes.HandleDefault)
@@ -41,7 +42,15 @@ func main() {
 	http.HandleFunc(`/{$}`, routes.HandleDefault)
 	http.HandleFunc(`/admin/login`, routes.HandleAdminLogin)
 	http.HandleFunc(`/admin/register`, routes.HandleAdminRegister)
+	http.HandleFunc(`/admin/dashboard`, routes.HandleAdminDashboard)
 	http.HandleFunc(`/admin/api`, routes.HandleAdminAPI)
+	http.HandleFunc(`/admin/download`, routes.HandleAdminDownload)
+	http.HandleFunc(`/admin/personal/upload`, routes.HandlePersonalUpload)
+	http.HandleFunc(`/admin/personal/download`, routes.HandlePersonalDownload)
+	http.HandleFunc(`/admin/webauthn/register/begin`, routes.HandleWebAuthnRegisterBegin)
+	http.HandleFunc(`/admin/webauthn/register/finish`, routes.HandleWebAuthnRegisterFinish)
+	http.HandleFunc(`/admin/webauthn/login/begin`, routes.HandleWebAuthnLoginBegin)
+	http.HandleFunc(`/admin/webauthn/login/finish`, routes.HandleWebAuthnLoginFinish)
 	http.HandleFunc(`/{id}`, routes.HandleFile)
 
 	fmt.Println("Now listening on the port " + port)

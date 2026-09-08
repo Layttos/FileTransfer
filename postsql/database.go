@@ -140,6 +140,9 @@ func ConnectPool(db *Database) {
 		used BOOLEAN DEFAULT TRUE
 	);`)
 	manageErr(err)
+
+	migrate(conn)
+
 	fmt.Println("Connecté avec succès à la base de données")
 }
 

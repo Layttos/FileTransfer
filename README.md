@@ -131,6 +131,51 @@ INSERT INTO admin_invitations (token, used) VALUES ('YOUR_INVITE_CODE', false);
 docker compose exec db psql -U filetransfer -d filetransfer
 ```
 
+# II bis. The admin dashboard
+
+Once logged in, everything happens at `/admin/dashboard`:
+
+- **Overview** — file count, disk usage, share of password-protected files, active
+  sessions, registered passkeys;
+- **Public files** — list, rename, change ID, delete, and download. Downloading a
+  password-protected file from here does **not** ask for its password: an admin
+  reads the files off the disk anyway, so this is an assumed privilege. Every such
+  download is written to the server log with the admin's username;
+- **My cloud** — a private file space per administrator, with folders. Files here
+  are stored under `FILES_PATH/personal/u<id>/` and are never served by any public
+  route. Ownership is enforced in SQL, so one admin cannot reach another's files;
+- **Security** — passkeys, password, login method, and active sessions with remote
+  sign-out;
+- **Administrators** — list accounts, generate invitation codes from the interface
+  instead of by hand in SQL, revoke an account.
+
+### Passkeys
+
+Each administrator picks their own login method under **Security → Method**:
+
+| Setting | Behaviour |
+|---|---|
+| Password only | the default |
+| Passkey or password | sign in with the passkey, password stays as a fallback |
+| Password then passkey | both are required (two factors) |
+
+You cannot select a passkey option before registering at least one passkey, and
+removing your last passkey drops the account back to password-only — neither of
+those can lock you out.
+
+> [!IMPORTANT]
+> **Passkeys require HTTPS**, and `PUBLIC_URL` must match the address people
+> actually visit (e.g. `PUBLIC_URL=https://files.example.com`). WebAuthn ties every
+> credential to that exact hostname; if it disagrees with the browser's address bar,
+> the browser refuses the ceremony. Everything else in the dashboard works over
+> plain HTTP.
+
+> [!NOTE]
+> Sessions are now server-side, carried by an `HttpOnly` cookie. Earlier versions
+> kept the admin username and password in ordinary cookies readable by any script
+> on the page. Those cookies are cleared on sight — after upgrading, every
+> administrator signs in once more.
+
 # III. How to use it
 
 > [!WARNING]
@@ -155,7 +200,12 @@ The files are stored unecrypted in the folder `./uploads/` (or in `FILES_PATH` i
 
 User data, file data... etc are stored in a PostgreSQL database.
 
-Here is the structure of the database:
+Administration data lives in four more tables, created automatically on start:
+`admin_sessions` (server-side sessions), `admin_credentials` (passkeys),
+`personal_files` (each admin's private cloud), and the extra bookkeeping columns on
+`admin_invitations`.
+
+Here is the structure of the original tables:
 <table>
     <thead>
         <tr>

@@ -85,6 +85,7 @@
     fetch('/admin/api', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: JSON.stringify({
         action: 'register',
         firstName,
@@ -95,16 +96,16 @@
         password
       })
     })
-    .then(res => res.json())
-    .then(data => {
-      const msg = getResponseMessage(data);
-
-      if (msg === 'USER_CREATED_SUCCESSFULLY') {
-        connectMsg.innerHTML = "<span class='text-green-500'>Compte créé avec succès.</span>";
-        setTimeout(() => { window.location.href = '/admin/login'; }, 1500);
-      } else {
-        connectMsg.innerHTML = "<span class='text-red-500'>" + (msg || 'La création du compte a échoué.') + "</span>";
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+      if (!ok) {
+        connectMsg.innerHTML = "<span class='text-red-500'>" +
+          (data.error || 'La création du compte a échoué.') + "</span>";
+        return;
       }
+      // Le serveur a ouvert la session : on entre directement dans le dashboard.
+      connectMsg.innerHTML = "<span class='text-green-500'>Compte créé, connexion en cours…</span>";
+      setTimeout(() => { window.location.href = '/admin/dashboard'; }, 900);
     })
     .catch(error => {
       console.error(error);

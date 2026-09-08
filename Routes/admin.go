@@ -8,247 +8,399 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
-func writeJSONMessage(w http.ResponseWriter, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]string{"message": message})
-}
-
-var RenameBody struct {
-}
-
 type rqBody struct {
+	// Inscription et connexion
 	Email      string `json:"email"`
 	Password   string `json:"password"`
 	Username   string `json:"username"`
 	FirstName  string `json:"firstName"`
 	LastName   string `json:"lastName"`
 	InviteCode string `json:"inviteCode"`
-	Token      string `json:"token"`
 	Action     string `json:"action"`
-	FileID     string `json:"fileID"`
-	NewName    string `json:"newFileName"`
-	NewFileID  string `json:"newFileID"`
+
+	// Fichiers publics
+	FileID    string `json:"fileID"`
+	NewName   string `json:"newFileName"`
+	NewFileID string `json:"newFileID"`
+
+	// Compte et securite
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
+	AuthPolicy      string `json:"authPolicy"`
+	SessionID       string `json:"sessionID"`
+	CredID          int    `json:"credID"`
+	CredName        string `json:"credName"`
+
+	// Administrateurs et invitations
+	AdminID int    `json:"adminID"`
+	Token   string `json:"token"`
+
+	// Cloud personnel
+	Folder string `json:"folder"`
+}
+
+func writeJSONMessage(w http.ResponseWriter, message string) {
+	writeOK(w, map[string]string{"message": message})
+}
+
+/* Pages */
+
+// HandleAdmin redirige vers le tableau de bord.
+func HandleAdmin(w http.ResponseWriter, req *http.Request) {
+	http.Redirect(w, req, "/admin/dashboard", http.StatusFound)
+}
+
+// HandleAdminDashboard sert le tableau de bord. La page est protegee ici, et
+// chaque appel d'API revalide la session de son cote.
+func HandleAdminDashboard(w http.ResponseWriter, req *http.Request) {
+	if user, _ := currentAdmin(req); user == nil {
+		http.Redirect(w, req, "/admin/login", http.StatusFound)
+		return
+	}
+	http.ServeFile(w, req, "./public/admin/dashboard.html")
 }
 
 func HandleAdminLogin(w http.ResponseWriter, req *http.Request) {
-
-	admin_username, err := req.Cookie("admin_username")
-	admin_password, err1 := req.Cookie("admin_password")
-	if (err != nil && err1 == nil) || (err == nil && err1 != nil) {
-		writeJSONMessage(w, "USER_OR_PASSWORD_INCORRECT")
+	if user, _ := currentAdmin(req); user != nil {
+		http.Redirect(w, req, "/admin/dashboard", http.StatusFound)
+		return
 	}
-
-	if admin_username != nil && admin_password != nil {
-		if postsql.AdminCheckCredentials(admin_username.Value, admin_password.Value) {
-			writeJSONMessage(w, "USER_ALREADY_LOGGED_IN")
-			http.ServeFile(w, req, "./public/admin/administration.html")
-			return
-		}
-	}
-
 	http.ServeFile(w, req, "./public/admin/login.html")
-	return
-
 }
 
 func HandleAdminRegister(w http.ResponseWriter, req *http.Request) {
 	http.ServeFile(w, req, "./public/admin/signin.html")
 }
 
-func HandleAdmin(w http.ResponseWriter, req *http.Request) {
-	http.ServeFile(w, req, "./public/admin/administration.html")
-	return
+/* Telechargement administrateur */
+
+// HandleAdminDownload sert un fichier depuis le panneau d'administration.
+//
+// C'est une route GET pour que le navigateur puisse la suivre directement :
+// l'ancienne version faisait un POST dont le corps etait jete, puis naviguait
+// vers une URL sans identifiants, ce qui ne pouvait pas fonctionner.
+//
+// Le mot de passe eventuel du fichier n'est pas demande : c'est un privilege
+// d'administration assume. Les fichiers sont stockes en clair sur le disque,
+// un administrateur y a de toute facon acces. L'acces est trace.
+func HandleAdminDownload(w http.ResponseWriter, req *http.Request) {
+	user, _ := currentAdmin(req)
+	if user == nil {
+		http.Redirect(w, req, "/admin/login", http.StatusFound)
+		return
+	}
+
+	id := req.URL.Query().Get("id")
+	if id == "" || !postsql.Exists(id) {
+		http.Error(w, "Fichier introuvable", http.StatusNotFound)
+		return
+	}
+
+	name := postsql.GetFileName(id)
+	fullPath := filepath.Join(os.Getenv("FILES_PATH"), id, name)
+	if _, err := os.Stat(fullPath); err != nil {
+		http.Error(w, "Fichier absent du disque", http.StatusNotFound)
+		return
+	}
+
+	protected := ""
+	if postsql.HasPassword(id) {
+		protected = " (protege par mot de passe, contourne)"
+	}
+	fmt.Printf("[ADMIN] %s telecharge %s%s\n", user.Username, id, protected)
+
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+sanitizeFilename(name)+"\"")
+	w.Header().Set("Content-Type", "application/octet-stream")
+	http.ServeFile(w, req, fullPath)
 }
 
-func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
-	var payload rqBody
+// sanitizeFilename neutralise les caracteres qui casseraient l'en-tete.
+func sanitizeFilename(name string) string {
+	name = strings.ReplaceAll(name, "\"", "'")
+	name = strings.ReplaceAll(name, "\r", "")
+	name = strings.ReplaceAll(name, "\n", "")
+	return name
+}
 
-	if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
-		writeJSONMessage(w, "The request body is not valid JSON")
+/* API */
+
+func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
+	var p rqBody
+	if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
+		writeErr(w, http.StatusBadRequest, "Corps de requete JSON invalide")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	// Actions accessibles sans session.
+	switch p.Action {
+	case "login":
+		adminLogin(w, req, p)
+		return
+	case "register":
+		adminRegister(w, req, p)
+		return
+	}
 
-	switch payload.Action {
-	case "delete":
-		{
+	user, token, ok := requireAdmin(w, req)
+	if !ok {
+		return
+	}
 
-			if !postsql.AdminCheckCredentials(payload.Username, payload.Password) {
-				json.NewEncoder(w).Encode(`{"message": "The provided credentials are not valid"}`)
-				return
-			}
+	switch p.Action {
+	case "me":
+		count, size := postsql.PersonalUsage(user.ID)
+		writeOK(w, map[string]interface{}{
+			"user":           user,
+			"passkeys":       postsql.CountCredentials(user.ID),
+			"personal_files": count,
+			"personal_size":  size,
+		})
 
-			if !postsql.Exists(payload.FileID) {
-				json.NewEncoder(w).Encode(`{"message":"The ID you provided wasn't found'"}`)
-				return
+	case "logout":
+		postsql.RevokeSession(token)
+		clearSessionCookie(w, req)
+		writeOK(w, map[string]string{"status": "LOGGED_OUT"})
 
-			}
+	case "overview":
+		writeOK(w, postsql.GetOverview())
 
-			postsql.DeleteFile(payload.FileID)
-			json.NewEncoder(w).Encode(`{"message": "Deleted file ID ''` + payload.FileID + `'"}`)
+	/* Fichiers publics */
+
+	case "list_files":
+		offset, err1 := strconv.Atoi(req.URL.Query().Get("offset"))
+		limit, err2 := strconv.Atoi(req.URL.Query().Get("limit"))
+		if err1 != nil || err2 != nil {
+			writeErr(w, http.StatusBadRequest, "offset ou limit invalide")
 			return
 		}
+		writeOK(w, postsql.ListFiles(offset, limit))
+
+	case "delete":
+		if !postsql.Exists(p.FileID) {
+			writeErr(w, http.StatusNotFound, "Fichier introuvable")
+			return
+		}
+		if !postsql.DeleteFile(p.FileID) {
+			writeErr(w, http.StatusInternalServerError, "Suppression impossible")
+			return
+		}
+		writeOK(w, map[string]string{"status": "FILE_DELETED"})
 
 	case "rename":
-		{
-			if !postsql.AdminCheckCredentials(payload.Username, payload.Password) {
-				json.NewEncoder(w).Encode(`{"message": "The provided credentials are not valid"}`)
-				return
-			}
-
-			if !postsql.Exists(payload.FileID) {
-				json.NewEncoder(w).Encode(`{"message":"The ID you provided wasn't found'"}`)
-				return
-
-			}
-
-			fullPath := filepath.Join(os.Getenv("FILES_PATH"), payload.FileID, postsql.GetFileName(payload.FileID))
-			fmt.Println("[RENAME] Full path:", fullPath)
-
-			if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-				json.NewEncoder(w).Encode(`{"message": "Somehow the ID was found but not the file"}`)
-				return
-			}
-
-			if postsql.RenameFile(payload.FileID, payload.NewName) {
-				writeJSONMessage(w, "FILE_RENAMED_SUCCESSFULLY")
-			} else {
-				writeJSONMessage(w, "FAILED_TO_RENAME_FILE")
-			}
+		if !postsql.Exists(p.FileID) {
+			writeErr(w, http.StatusNotFound, "Fichier introuvable")
 			return
-
 		}
+		if !postsql.RenameFile(p.FileID, p.NewName) {
+			writeErr(w, http.StatusInternalServerError, "Renommage impossible")
+			return
+		}
+		writeOK(w, map[string]string{"status": "FILE_RENAMED"})
+
 	case "change_id":
-		{
-			if !postsql.AdminCheckCredentials(payload.Username, payload.Password) {
-				json.NewEncoder(w).Encode(`{"message": "The provided credentials are not valid"}`)
-				return
-			}
-
-			if !postsql.Exists(payload.FileID) {
-				json.NewEncoder(w).Encode(`{"message":"The ID you provided wasn't found'"}`)
-				return
-
-			}
-
-			fullPath := filepath.Join(os.Getenv("FILES_PATH"), payload.FileID, postsql.GetFileName(payload.FileID))
-
-			if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-				json.NewEncoder(w).Encode(`{"message": "Somehow the ID was found but not the file"}`)
-				return
-			}
-
-			if postsql.ChangeFileID(payload.FileID, payload.NewFileID) {
-				writeJSONMessage(w, "FILE_ID_CHANGED_SUCCESSFULLY")
-			} else {
-				writeJSONMessage(w, "FAILED_TO_CHANGE_FILE_ID")
-			}
-
+		if !postsql.Exists(p.FileID) {
+			writeErr(w, http.StatusNotFound, "Fichier introuvable")
 			return
 		}
-	case "register":
-		{
-			if payload.Email == "" || payload.Password == "" || payload.Username == "" || payload.FirstName == "" || payload.LastName == "" || payload.InviteCode == "" {
-				json.NewEncoder(w).Encode(`{"message": "ONE_OR_MORE_FIELDS_ARE_EMPTY"}`)
-				return
-			}
-
-			if postsql.AdminCheckUserExistence(payload.Username) {
-				writeJSONMessage(w, "USERNAME_OR_EMAIL_ALREADY_EXISTS")
-				return
-			}
-			token, success := postsql.AdminRegisterUser(payload.FirstName, payload.LastName, payload.Username, payload.Email, payload.Password, payload.InviteCode)
-			if !success {
-				writeJSONMessage(w, "USER_CREATION_FAILED")
-				return
-			}
-			fmt.Println("User created successfully")
-
-			json.NewEncoder(w).Encode(`{"message": "USER_CREATED_SUCCESSFULLY", "token":"` + token + `"	}`)
-			return
-
-		}
-	case "login":
-		{
-			if payload.Username == "" || payload.Password == "" || payload.Email == "" {
-				json.NewEncoder(w).Encode(`{"message": "ONE_OR_MORE_FIELDS_ARE_EMPTY"}`)
-				return
-			}
-
-			if !postsql.AdminCheckCredentials(payload.Username, payload.Password) {
-				writeJSONMessage(w, "USER_OR_PASSWORD_INCORRECT")
-				return
-			}
-
-			token := postsql.AdminGetUserToken(payload.Username)
-			if token == "" {
-				token = postsql.AdminGetUserToken(payload.Email)
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_ = json.NewEncoder(w).Encode(map[string]string{"message": "USER_LOGGED_IN_SUCCESSFULLY", "token": token})
+		if !postsql.ChangeFileID(p.FileID, p.NewFileID) {
+			writeErr(w, http.StatusInternalServerError, "Changement d'identifiant impossible")
 			return
 		}
-	case "list_files":
-		{
-			if !postsql.AdminCheckCredentials(payload.Username, payload.Password) {
-				json.NewEncoder(w).Encode(`{"message": "The provided credentials are not valid"}`)
-				return
-			}
+		writeOK(w, map[string]string{"status": "FILE_ID_CHANGED"})
 
-			if req.URL.Query().Get("offset") == "" || req.URL.Query().Get("limit") == "" {
-				writeJSONMessage(w, "MISSING_OFFSET_OR_LIMIT")
-				return
-			}
+	/* Securite du compte */
 
-			offset, err1 := strconv.Atoi(req.URL.Query().Get("offset"))
-			limit, err2 := strconv.Atoi(req.URL.Query().Get("limit"))
+	case "sessions_list":
+		writeOK(w, postsql.ListSessions(user.ID, token))
 
-			if err1 != nil || err2 != nil {
-				writeJSONMessage(w, "INVALID_OFFSET_OR_LIMIT")
-				return
-			}
-
-			files := postsql.ListFiles(offset, limit)
-			json.NewEncoder(w).Encode(files)
+	case "session_revoke":
+		if !postsql.RevokeSessionByPrefix(user.ID, p.SessionID) {
+			writeErr(w, http.StatusNotFound, "Session introuvable")
 			return
 		}
-	case "download":
-		{
-			if !postsql.AdminCheckCredentials(payload.Username, payload.Password) {
-				json.NewEncoder(w).Encode(`{"message": "The provided credentials are not valid"}`)
-				return
-			}
+		writeOK(w, map[string]string{"status": "SESSION_REVOKED"})
 
-			if !postsql.Exists(payload.FileID) {
-				json.NewEncoder(w).Encode(`{"message":"The ID you provided wasn't found'"}`)
-				return
-			}
+	case "sessions_revoke_others":
+		n := postsql.RevokeAllSessions(user.ID, token)
+		writeOK(w, map[string]interface{}{"status": "SESSIONS_REVOKED", "count": n})
 
-			fullPath := filepath.Join(os.Getenv("FILES_PATH"), payload.FileID, postsql.GetFileName(payload.FileID))
-
-			if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-				json.NewEncoder(w).Encode(`{"message": "Somehow the ID was found but not the file"}`)
-				return
-			}
-
-			w.Header().Set("Content-Disposition", "attachment; filename=\""+postsql.GetFileName(payload.FileID)+"\"")
-			w.Header().Set("Content-Type", "application/octet-stream")
-			http.ServeFile(w, req, fullPath)
+	case "change_password":
+		if err := postsql.AdminChangePassword(user.ID, p.CurrentPassword, p.NewPassword); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
 			return
-
 		}
+		// Un changement de mot de passe deconnecte les autres appareils.
+		postsql.RevokeAllSessions(user.ID, token)
+		writeOK(w, map[string]string{"status": "PASSWORD_CHANGED"})
+
+	case "set_auth_policy":
+		if err := postsql.AdminSetAuthPolicy(user.ID, p.AuthPolicy); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeOK(w, map[string]string{"status": "POLICY_UPDATED", "policy": p.AuthPolicy})
+
+	case "passkeys_list":
+		writeOK(w, postsql.ListCredentials(user.ID))
+
+	case "passkey_rename":
+		if err := postsql.RenameCredential(user.ID, p.CredID, strings.TrimSpace(p.CredName)); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeOK(w, map[string]string{"status": "PASSKEY_RENAMED"})
+
+	case "passkey_delete":
+		if err := postsql.DeleteCredential(user.ID, p.CredID); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeOK(w, map[string]string{"status": "PASSKEY_DELETED"})
+
+	/* Administrateurs et invitations */
+
+	case "admins_list":
+		writeOK(w, postsql.ListAdmins())
+
+	case "admin_delete":
+		if err := postsql.DeleteAdmin(p.AdminID, user.ID); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeOK(w, map[string]string{"status": "ADMIN_DELETED"})
+
+	case "invites_list":
+		writeOK(w, postsql.ListInvitations())
+
+	case "invite_create":
+		token, err := postsql.CreateInvitation(user.Username)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, "Creation impossible : "+err.Error())
+			return
+		}
+		writeOK(w, map[string]string{"status": "INVITE_CREATED", "token": token})
+
+	case "invite_delete":
+		if err := postsql.DeleteInvitation(p.Token); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeOK(w, map[string]string{"status": "INVITE_DELETED"})
+
+	/* Cloud personnel */
+
+	case "personal_list":
+		writeOK(w, map[string]interface{}{
+			"folder":  postsql.NormalizeFolder(p.Folder),
+			"folders": postsql.PersonalSubfolders(user.ID, p.Folder),
+			"files":   postsql.PersonalList(user.ID, p.Folder),
+		})
+
+	case "personal_delete":
+		if err := postsql.PersonalDelete(user.ID, p.FileID); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeOK(w, map[string]string{"status": "PERSONAL_DELETED"})
+
+	case "personal_rename":
+		if err := postsql.PersonalRename(user.ID, p.FileID, p.NewName); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeOK(w, map[string]string{"status": "PERSONAL_RENAMED"})
+
+	case "personal_move":
+		if err := postsql.PersonalMove(user.ID, p.FileID, p.Folder); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeOK(w, map[string]string{"status": "PERSONAL_MOVED"})
+
 	default:
-		{
-			writeJSONMessage(w, "NON_EXISTENT_ACTION")
-		}
+		writeErr(w, http.StatusBadRequest, "Action inconnue")
+	}
+}
+
+/* Connexion et inscription */
+
+func adminLogin(w http.ResponseWriter, req *http.Request, p rqBody) {
+	identifier := strings.TrimSpace(p.Username)
+	if identifier == "" {
+		identifier = strings.TrimSpace(p.Email)
+	}
+	if identifier == "" || p.Password == "" {
+		writeErr(w, http.StatusBadRequest, "Identifiant et mot de passe requis")
 		return
 	}
 
+	user, ok := postsql.AdminGetUser(identifier)
+	if !ok || !postsql.AdminVerifyPassword(user.ID, p.Password) {
+		writeErr(w, http.StatusUnauthorized, "Identifiant ou mot de passe incorrect")
+		return
+	}
+
+	// La politique du compte peut exiger une passkey en plus du mot de passe.
+	if user.AuthPolicy == postsql.PolicyPasswordAndPasskey {
+		if postsql.CountCredentials(user.ID) == 0 {
+			writeErr(w, http.StatusInternalServerError, "Compte configure pour exiger une passkey, mais aucune n'est enregistree")
+			return
+		}
+		pending, err := StartPendingPasskey(user.ID)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, "Ouverture de session impossible")
+			return
+		}
+		writeOK(w, map[string]interface{}{"status": "PASSKEY_REQUIRED", "pending": pending})
+		return
+	}
+
+	token, err := postsql.CreateSession(user.ID, clientIP(req), req.UserAgent())
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "Ouverture de session impossible")
+		return
+	}
+	setSessionCookie(w, req, token)
+	writeOK(w, map[string]interface{}{"status": "LOGGED_IN", "user": user})
+}
+
+func adminRegister(w http.ResponseWriter, req *http.Request, p rqBody) {
+	if p.Email == "" || p.Password == "" || p.Username == "" ||
+		p.FirstName == "" || p.LastName == "" || p.InviteCode == "" {
+		writeErr(w, http.StatusBadRequest, "Tous les champs sont requis")
+		return
+	}
+	if len(p.Password) < 8 {
+		writeErr(w, http.StatusBadRequest, "Le mot de passe doit faire au moins 8 caracteres")
+		return
+	}
+	if postsql.AdminCheckUserExistence(p.Username) {
+		writeErr(w, http.StatusConflict, "Ce nom d'utilisateur ou cet e-mail existe deja")
+		return
+	}
+
+	if _, success := postsql.AdminRegisterUser(
+		p.FirstName, p.LastName, p.Username, p.Email, p.Password, p.InviteCode); !success {
+		writeErr(w, http.StatusBadRequest, "Creation impossible : code d'invitation invalide ou deja utilise")
+		return
+	}
+
+	user, ok := postsql.AdminGetUser(p.Username)
+	if !ok {
+		writeErr(w, http.StatusInternalServerError, "Compte cree mais introuvable")
+		return
+	}
+
+	// Le compte vient d'etre cree : on ouvre la session directement.
+	token, err := postsql.CreateSession(user.ID, clientIP(req), req.UserAgent())
+	if err != nil {
+		writeOK(w, map[string]string{"status": "USER_CREATED"})
+		return
+	}
+	setSessionCookie(w, req, token)
+	fmt.Printf("[ADMIN] compte cree : %s\n", user.Username)
+	writeOK(w, map[string]interface{}{"status": "USER_CREATED", "user": user})
 }
