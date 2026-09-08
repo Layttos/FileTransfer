@@ -85,6 +85,7 @@
                 <p><span class="strong font-semibold">Formats.</span> Les réponses sont en JSON, sauf les points d'entrée qui servent un fichier ou une page HTML. Les corps de requête JSON attendent l'en-tête <code>Content-Type: application/json</code>.</p>
                 <p><span class="strong font-semibold">Une seule adresse d'API.</span> Toute l'administration passe par <code>POST /admin/api</code>, avec un champ <code>action</code> qui désigne l'opération. Les transferts de fichiers ont leurs propres adresses, parce qu'un navigateur doit pouvoir les suivre directement.</p>
                 <p><span class="strong font-semibold">Flux.</span> Dépôts et téléchargements sont traités en flux, sans limite de taille côté application. Le plafond éventuel vient du reverse proxy, voir <a href="#limites" class="text-indigo-600 hover:underline dark:text-indigo-400">Limites</a>.</p>
+                <p><span class="strong font-semibold">Chiffrement.</span> Le stockage est chiffré, sans conséquence pour l'API : les tailles renvoyées sont celles du fichier d'origine, et les requêtes <code>Range</code> restent servies, donc la reprise de téléchargement et le déplacement dans une vidéo continuent de fonctionner.</p>
             </div>
         </section>
 
@@ -153,6 +154,26 @@ curl -b cookies.txt -X POST https://votre-domaine/admin/api \
                     <pre class="codebg mt-3"><code>curl "https://votre-domaine/aB3xY9?jsonInfo=only"
 curl -H "X-File-Password: secret" -O -J "https://votre-domaine/aB3xY9?download=true"</code></pre>
                     <p class="muted mt-2 text-xs">Les requêtes <code>Range</code> sont acceptées : reprise de téléchargement et déplacement dans une vidéo fonctionnent.</p>
+                </article>
+
+                <article class="rowline p-4 md:p-5">
+                    <p><span class="strong">Aperçu des liens</span> <span class="muted text-sm">— Open Graph</span></p>
+                    <p class="muted mt-2 text-sm">La page servie par <code>/{id}</code> porte les métadonnées du fichier, pour qu'un lien collé dans Discord, Slack ou iMessage s'affiche en vignette plutôt qu'en URL brute. Ces clients lisent les balises <code>&lt;meta&gt;</code> sans exécuter le JavaScript de la page.</p>
+                    <div class="tbl-wrap mt-3">
+                        <table class="text-sm">
+                            <thead class="muted"><tr class="rowline border-b"><th>Type de fichier</th><th>Balises émises</th></tr></thead>
+                            <tbody>
+                                <tr class="rowline border-b"><td>Image</td><td><code>og:image</code>, <code>og:image:type</code>, <code>twitter:card=summary_large_image</code> — la vignette est affichée</td></tr>
+                                <tr class="rowline border-b"><td>Vidéo</td><td><code>og:video</code>, <code>og:video:type</code>, <code>twitter:card=player</code></td></tr>
+                                <tr class="rowline border-b"><td>Audio</td><td><code>og:audio</code>, <code>og:audio:type</code></td></tr>
+                                <tr class="rowline border-b"><td>Autre</td><td>Carte résumée : <code>og:title</code>, <code>og:description</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="muted mt-3 text-sm">Un fichier protégé par mot de passe n'expose <strong>aucune</strong> URL d'aperçu : seulement son nom, sa taille et la mention de la protection. L'aperçu serait sinon accessible sans le mot de passe.</p>
+                    <pre class="codebg mt-3"><code>&lt;meta property="og:title" content="rapport.pdf"&gt;
+&lt;meta property="og:description" content="1.67 Mo"&gt;
+&lt;meta property="og:image" content="https://votre-domaine/aB3xY9?preview=true"&gt;</code></pre>
                 </article>
 
                 <article class="p-4 md:p-5">
@@ -330,7 +351,7 @@ curl -H "X-File-Password: secret" -O -J "https://votre-domaine/aB3xY9?download=t
                 <p><span class="strong font-semibold">Éditeur de texte.</span> 2 Mio, côté serveur comme côté navigateur.</p>
                 <p><span class="strong font-semibold">Sessions.</span> 7 jours, prolongées à chaque usage.</p>
                 <p><span class="strong font-semibold">Journal.</span> Conservé 90 jours par défaut, réglable par <code>AUDIT_RETENTION_DAYS</code>.</p>
-                <p><span class="strong font-semibold">Chiffrement.</span> Les fichiers sont stockés en clair sur le disque du serveur. Le mot de passe d'un fichier protège son lien de partage, pas son contenu vis-à-vis de l'administrateur de la machine.</p>
+                <p><span class="strong font-semibold">Chiffrement.</span> Les fichiers sont chiffrés sur le disque en AES-256-GCM, et compressés en zstd lorsque le contenu s'y prête. Tout est transparent pour l'API : les tailles annoncées et les octets servis sont ceux du fichier d'origine. Le chiffrement protège contre un disque volé ou une sauvegarde qui fuite, pas contre quelqu'un qui contrôle le serveur, puisque la clé s'y trouve. Le mot de passe d'un fichier protège son lien de partage, pas son contenu vis-à-vis de l'administrateur de la machine.</p>
             </div>
         </section>
 
