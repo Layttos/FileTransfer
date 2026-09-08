@@ -22,7 +22,7 @@ func HandleFile(w http.ResponseWriter, req *http.Request) {
 		}
 
 		if len(req.URL.Query()) == 0 {
-			serveHTML(w, req, "public/download.html")
+			serveDownloadPage(w, req, id)
 			return
 		}
 
