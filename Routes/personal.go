@@ -89,6 +89,8 @@ func HandlePersonalUpload(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
+		audit(req, user, postsql.LevelInfo, postsql.CatPersonal, "depot", id,
+			fmt.Sprintf("%s%s (%d octets)", folder, fn, size))
 		writeOK(w, map[string]interface{}{
 			"id": id, "file_name": fn, "file_size": size, "folder": folder,
 		})
@@ -120,6 +122,8 @@ func HandlePersonalDownload(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "Fichier absent du disque", http.StatusNotFound)
 		return
 	}
+
+	audit(req, user, postsql.LevelInfo, postsql.CatPersonal, "telechargement", f.ID, f.FileName)
 
 	disposition := "attachment"
 	if req.URL.Query().Get("preview") == "true" {

@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 )
 
@@ -94,6 +95,15 @@ func webAuthnFor(req *http.Request) (*webauthn.WebAuthn, error) {
 		RPDisplayName: "FileTransfer",
 		RPID:          u.Hostname(),
 		RPOrigins:     []string{origin},
+
+		// Cle residente exigee : sans elle, la cle n'est pas une "passkey" au sens
+		// des gestionnaires (Bitwarden, iCloud, 1Password) qui refusent alors de la
+		// stocker, et la connexion sans identifiant ne peut rien retrouver.
+		AuthenticatorSelection: protocol.AuthenticatorSelection{
+			ResidentKey:      protocol.ResidentKeyRequirementRequired,
+			UserVerification: protocol.VerificationPreferred,
+		},
+		AttestationPreference: protocol.PreferNoAttestation,
 	})
 }
 
@@ -111,7 +121,14 @@ func HandleWebAuthnRegisterBegin(w http.ResponseWriter, req *http.Request) {
 	}
 
 	waUser := postsql.NewWebAuthnUser(user)
-	options, sessionData, err := wa.BeginRegistration(waUser)
+	options, sessionData, err := wa.BeginRegistration(waUser,
+		webauthn.WithAuthenticatorSelection(protocol.AuthenticatorSelection{
+			ResidentKey:      protocol.ResidentKeyRequirementRequired,
+			UserVerification: protocol.VerificationPreferred,
+		}),
+		// credProps nous dit si l'authenticateur a bien cree une cle residente.
+		webauthn.WithExtensions(webauthn.WithExtensionCredProps()),
+	)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "Ceremonie impossible : "+err.Error())
 		return
@@ -164,6 +181,7 @@ func HandleWebAuthnRegisterFinish(w http.ResponseWriter, req *http.Request) {
 		writeErr(w, http.StatusInternalServerError, "Enregistrement impossible : "+err.Error())
 		return
 	}
+	audit(req, user, postsql.LevelWarn, postsql.CatAuth, "passkey-enregistree", name, "")
 	writeOK(w, map[string]string{"status": "PASSKEY_REGISTERED", "name": name})
 }
 
@@ -260,6 +278,7 @@ func HandleWebAuthnLoginFinish(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if err != nil || user == nil {
+		auditAnon(req, postsql.LevelWarn, postsql.CatAuth, "passkey-refusee", "", "")
 		writeErr(w, http.StatusUnauthorized, "Passkey refusee")
 		return
 	}
@@ -284,5 +303,10 @@ func HandleWebAuthnLoginFinish(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	setSessionCookie(w, req, token)
+	methode := "passkey"
+	if pending != "" {
+		methode = "mot de passe + passkey"
+	}
+	audit(req, user, postsql.LevelInfo, postsql.CatAuth, "connexion", user.Username, methode)
 	writeOK(w, map[string]interface{}{"status": "LOGGED_IN", "user": user})
 }

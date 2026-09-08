@@ -56,6 +56,25 @@ func migrate(conn *pgx.Conn) {
 		);`,
 		`CREATE INDEX IF NOT EXISTS personal_files_user_idx ON personal_files (user_id);`,
 
+		// Journal d'audit : tout ce qui se passe sur le site, du depot anonyme
+		// d'un fichier a la revocation d'une passkey.
+		`CREATE TABLE IF NOT EXISTS audit_log (
+			id         BIGSERIAL PRIMARY KEY,
+			at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			level      VARCHAR(16) NOT NULL DEFAULT 'info',
+			category   VARCHAR(32) NOT NULL,
+			action     VARCHAR(64) NOT NULL,
+			actor      VARCHAR(255) NOT NULL DEFAULT '',
+			actor_id   INTEGER,
+			ip_addr    VARCHAR(45) NOT NULL DEFAULT '',
+			target     VARCHAR(255) NOT NULL DEFAULT '',
+			detail     TEXT NOT NULL DEFAULT '',
+			user_agent VARCHAR(512) NOT NULL DEFAULT ''
+		);`,
+		`CREATE INDEX IF NOT EXISTS audit_log_at_idx ON audit_log (at DESC);`,
+		`CREATE INDEX IF NOT EXISTS audit_log_category_idx ON audit_log (category);`,
+		`CREATE INDEX IF NOT EXISTS audit_log_level_idx ON audit_log (level);`,
+
 		// Tracabilite des invitations, pour les gerer depuis le dashboard
 		// au lieu d'un INSERT SQL a la main.
 		`ALTER TABLE admin_invitations ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;`,

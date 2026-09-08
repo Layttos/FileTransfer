@@ -33,8 +33,14 @@ func main() {
 	postsql.ReconnectDB()
 	defer postsql.Close()
 
+	postsql.StartAuditWriter()
 	postsql.BootstrapAdminInvitation()
 	postsql.PurgeExpiredSessions()
+	postsql.PurgeAudit()
+	postsql.Audit(postsql.AuditEntry{
+		Category: postsql.CatSystem, Action: "demarrage", Actor: "serveur",
+		Detail: "port " + port,
+	})
 
 	http.HandleFunc("/upload", routes.HandleUpload)
 	http.HandleFunc("/index", routes.HandleDefault)

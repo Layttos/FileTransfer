@@ -97,6 +97,8 @@ func HandleUpload(w http.ResponseWriter, rq *http.Request) {
 					err = closeErr
 				}
 				fmt.Fprintf(os.Stderr, "Upload interrompu (%s, %d octets ecrits) : %v\n", fn, size, err)
+				auditAnon(rq, postsql.LevelError, postsql.CatUpload, "depot-interrompu", fn,
+					fmt.Sprintf("%d octets ecrits : %v", size, err))
 				writeUploadError(w, http.StatusInternalServerError, "Transfert interrompu avant la fin")
 				return
 			}
@@ -104,6 +106,13 @@ func HandleUpload(w http.ResponseWriter, rq *http.Request) {
 			ip := clientIP(rq)
 
 			postsql.PushFile(id, fn, size, ip, rq.URL.Query().Get("password"))
+
+			protege := ""
+			if rq.URL.Query().Get("password") != "" {
+				protege = ", protege par mot de passe"
+			}
+			auditAnon(rq, postsql.LevelInfo, postsql.CatUpload, "depot", id,
+				fmt.Sprintf("%s (%d octets%s)", fn, size, protege))
 			response := map[string]interface{}{
 				"id":   id,
 				"size": size,

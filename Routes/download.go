@@ -20,6 +20,7 @@ func HandleFile(w http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodGet {
 
 		if postsql.Exists(id) == false {
+			auditAnon(req, postsql.LevelWarn, postsql.CatDownload, "introuvable", id, "")
 			http.ServeFile(w, req, "public/404.html")
 			return
 		}
@@ -49,6 +50,8 @@ func HandleFile(w http.ResponseWriter, req *http.Request) {
 			if postsql.HasPassword(id) == true {
 				// Décentralisation de la vérification du mdp (azy la condition était tarpin longue sinon)
 				if verifyPassword(id, req) {
+					auditAnon(req, postsql.LevelWarn, postsql.CatDownload, "mot-de-passe-refuse", id,
+						postsql.GetFileName(id))
 					w.Header().Set("Content-Type", "application/json")
 					response := map[string]interface{}{
 						"error": "Le mot de passe est requis pour ce fichier ou vous avez entré le mauvais mot de passe",
@@ -59,6 +62,12 @@ func HandleFile(w http.ResponseWriter, req *http.Request) {
 
 				}
 			}
+
+			action := "telechargement"
+			if isPreview {
+				action = "apercu"
+			}
+			auditAnon(req, postsql.LevelInfo, postsql.CatDownload, action, id, postsql.GetFileName(id))
 
 			fullPath := filepath.Join(os.Getenv("FILES_PATH"), id, postsql.GetFileName(id))
 			if isDownload {

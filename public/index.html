@@ -2,7 +2,8 @@
 <html lang="fr" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#4f46e5">
     <link rel="shortcut icon" href="https://file.titino.app/KnexMg?download=true" type="image/x-icon">
     <!-- Description Google et Image présente sur l'affichage Discord -->
     <meta name="description" content="FTransfer vous offre la possibilité de partager des fichiers gratuitement, sans limite de fichiers et avec une bande passante d'1Gbps&nbsp;Il existe également un bot discord !">
@@ -45,7 +46,7 @@
     <form id="uploadMain" class="w-full max-w-xl px-6">
         <div class="text-center">
             <p class="text-lg font-semibold text-indigo-600 dark:text-indigo-400">TeanoLink | Layttos</p>
-            <h1 class="mt-4 text-4xl md:text-5xl font-bold text-gray-900 dark:text-gray-100">Téléverser des fichiers</h1>
+            <h1 class="mt-3 text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-gray-100">Téléverser des fichiers</h1>
             <span class="mt-6 text-xl md:text-1xl text-gray-600 dark:text-gray-300">Recherchez vos fichiers, puis cliquez sur "Téléverser les fichiers".</span>
             <div class="mt-5 space-y-4">
                 <div class="mt-6">
@@ -160,13 +161,13 @@
             nameSpan.textContent = file.name;
             
             const actionDiv = document.createElement('div');
-            actionDiv.className = "flex items-center gap-2";
+            actionDiv.className = "flex flex-wrap items-center justify-end gap-2 shrink-0";
             actionDiv.id = 'file-action-' + index;
             
             const removeBtn = document.createElement('button');
             removeBtn.type = "button";
             removeBtn.innerHTML = "&times;";
-            removeBtn.className = "text-red-500 hover:text-red-700 font-bold px-2 text-lg";
+            removeBtn.className = "text-red-500 hover:text-red-700 font-bold px-3 text-2xl leading-none min-h-[44px] min-w-[44px] flex items-center justify-center";
             removeBtn.onclick = () => {
                 filesToUpload.splice(index, 1);
                 updateFileList();
@@ -326,8 +327,8 @@
 
                 const downloadLink = window.location.href + data.id;
                 actionDiv.innerHTML = `
-                    <a class="text-green-500 underline text-xs truncate max-w-[90px] sm:max-w-[150px]" href="${downloadLink}" target="_blank">${data.id}</a>
-                    <button type="button" class="copy-btn rounded-md border border-green-500 px-2 py-1 text-xs font-semibold text-green-600 transition hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-950" data-link="${downloadLink}">Copier</button>
+                    <a class="text-green-500 underline text-xs break-all" href="${downloadLink}" target="_blank">${data.id}</a>
+                    <button type="button" class="copy-btn shrink-0 rounded-md border border-green-500 px-3 py-2 text-xs font-semibold text-green-600 transition hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-950" data-link="${downloadLink}">Copier</button>
                 `;
             } catch (error) {
                 hasError = true;

@@ -40,6 +40,13 @@ type rqBody struct {
 
 	// Cloud personnel
 	Folder string `json:"folder"`
+
+	// Journal
+	Category string `json:"category"`
+	Level    string `json:"level"`
+	Search   string `json:"search"`
+	Offset   int    `json:"offset"`
+	Limit    int    `json:"limit"`
 }
 
 func writeJSONMessage(w http.ResponseWriter, message string) {
@@ -111,6 +118,7 @@ func HandleAdminDownload(w http.ResponseWriter, req *http.Request) {
 		protected = " (protege par mot de passe, contourne)"
 	}
 	fmt.Printf("[ADMIN] %s telecharge %s%s\n", user.Username, id, protected)
+	audit(req, user, postsql.LevelInfo, postsql.CatDownload, "telechargement-admin", id, name+protected)
 
 	w.Header().Set("Content-Disposition", "attachment; filename=\""+sanitizeFilename(name)+"\"")
 	w.Header().Set("Content-Type", "application/octet-stream")
@@ -160,12 +168,28 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 		})
 
 	case "logout":
+		audit(req, user, postsql.LevelInfo, postsql.CatAuth, "deconnexion", user.Username, "")
 		postsql.RevokeSession(token)
 		clearSessionCookie(w, req)
 		writeOK(w, map[string]string{"status": "LOGGED_OUT"})
 
 	case "overview":
 		writeOK(w, postsql.GetOverview())
+
+	case "storage":
+		writeOK(w, postsql.GetStorage())
+
+	/* Journal */
+
+	case "audit_list":
+		entries, total := postsql.ListAudit(postsql.AuditFilter{
+			Category: p.Category, Level: p.Level, Search: p.Search,
+			Offset: p.Offset, Limit: p.Limit,
+		})
+		writeOK(w, map[string]interface{}{"entries": entries, "total": total})
+
+	case "audit_stats":
+		writeOK(w, postsql.AuditStats())
 
 	/* Fichiers publics */
 
@@ -183,10 +207,12 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			writeErr(w, http.StatusNotFound, "Fichier introuvable")
 			return
 		}
+		nom := postsql.GetFileName(p.FileID)
 		if !postsql.DeleteFile(p.FileID) {
 			writeErr(w, http.StatusInternalServerError, "Suppression impossible")
 			return
 		}
+		audit(req, user, postsql.LevelWarn, postsql.CatFile, "suppression", p.FileID, nom)
 		writeOK(w, map[string]string{"status": "FILE_DELETED"})
 
 	case "rename":
@@ -194,10 +220,12 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			writeErr(w, http.StatusNotFound, "Fichier introuvable")
 			return
 		}
+		ancien := postsql.GetFileName(p.FileID)
 		if !postsql.RenameFile(p.FileID, p.NewName) {
 			writeErr(w, http.StatusInternalServerError, "Renommage impossible")
 			return
 		}
+		audit(req, user, postsql.LevelInfo, postsql.CatFile, "renommage", p.FileID, ancien+" -> "+p.NewName)
 		writeOK(w, map[string]string{"status": "FILE_RENAMED"})
 
 	case "change_id":
@@ -209,6 +237,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			writeErr(w, http.StatusInternalServerError, "Changement d'identifiant impossible")
 			return
 		}
+		audit(req, user, postsql.LevelInfo, postsql.CatFile, "changement-identifiant", p.FileID, p.FileID+" -> "+p.NewFileID)
 		writeOK(w, map[string]string{"status": "FILE_ID_CHANGED"})
 
 	/* Securite du compte */
@@ -221,10 +250,13 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			writeErr(w, http.StatusNotFound, "Session introuvable")
 			return
 		}
+		audit(req, user, postsql.LevelInfo, postsql.CatAuth, "session-revoquee", p.SessionID, "")
 		writeOK(w, map[string]string{"status": "SESSION_REVOKED"})
 
 	case "sessions_revoke_others":
 		n := postsql.RevokeAllSessions(user.ID, token)
+		audit(req, user, postsql.LevelInfo, postsql.CatAuth, "sessions-revoquees", user.Username,
+			fmt.Sprintf("%d session(s)", n))
 		writeOK(w, map[string]interface{}{"status": "SESSIONS_REVOKED", "count": n})
 
 	case "change_password":
@@ -234,6 +266,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 		}
 		// Un changement de mot de passe deconnecte les autres appareils.
 		postsql.RevokeAllSessions(user.ID, token)
+		audit(req, user, postsql.LevelWarn, postsql.CatAuth, "mot-de-passe-change", user.Username, "")
 		writeOK(w, map[string]string{"status": "PASSWORD_CHANGED"})
 
 	case "set_auth_policy":
@@ -241,6 +274,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		audit(req, user, postsql.LevelWarn, postsql.CatAuth, "methode-connexion-changee", user.Username, p.AuthPolicy)
 		writeOK(w, map[string]string{"status": "POLICY_UPDATED", "policy": p.AuthPolicy})
 
 	case "passkeys_list":
@@ -251,6 +285,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		audit(req, user, postsql.LevelInfo, postsql.CatAuth, "passkey-renommee", p.CredName, "")
 		writeOK(w, map[string]string{"status": "PASSKEY_RENAMED"})
 
 	case "passkey_delete":
@@ -258,6 +293,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		audit(req, user, postsql.LevelWarn, postsql.CatAuth, "passkey-revoquee", fmt.Sprintf("#%d", p.CredID), "")
 		writeOK(w, map[string]string{"status": "PASSKEY_DELETED"})
 
 	/* Administrateurs et invitations */
@@ -270,6 +306,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		audit(req, user, postsql.LevelWarn, postsql.CatAdmin, "compte-supprime", fmt.Sprintf("#%d", p.AdminID), "")
 		writeOK(w, map[string]string{"status": "ADMIN_DELETED"})
 
 	case "invites_list":
@@ -281,6 +318,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			writeErr(w, http.StatusInternalServerError, "Creation impossible : "+err.Error())
 			return
 		}
+		audit(req, user, postsql.LevelInfo, postsql.CatAdmin, "invitation-creee", token, "")
 		writeOK(w, map[string]string{"status": "INVITE_CREATED", "token": token})
 
 	case "invite_delete":
@@ -288,6 +326,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		audit(req, user, postsql.LevelInfo, postsql.CatAdmin, "invitation-supprimee", p.Token, "")
 		writeOK(w, map[string]string{"status": "INVITE_DELETED"})
 
 	/* Cloud personnel */
@@ -304,6 +343,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		audit(req, user, postsql.LevelInfo, postsql.CatPersonal, "suppression", p.FileID, "")
 		writeOK(w, map[string]string{"status": "PERSONAL_DELETED"})
 
 	case "personal_rename":
@@ -311,6 +351,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		audit(req, user, postsql.LevelInfo, postsql.CatPersonal, "renommage", p.FileID, p.NewName)
 		writeOK(w, map[string]string{"status": "PERSONAL_RENAMED"})
 
 	case "personal_move":
@@ -318,6 +359,7 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		audit(req, user, postsql.LevelInfo, postsql.CatPersonal, "deplacement", p.FileID, p.Folder)
 		writeOK(w, map[string]string{"status": "PERSONAL_MOVED"})
 
 	default:
@@ -339,6 +381,8 @@ func adminLogin(w http.ResponseWriter, req *http.Request, p rqBody) {
 
 	user, ok := postsql.AdminGetUser(identifier)
 	if !ok || !postsql.AdminVerifyPassword(user.ID, p.Password) {
+		auditAnon(req, postsql.LevelWarn, postsql.CatAuth, "connexion-refusee", identifier,
+			"identifiant ou mot de passe incorrect")
 		writeErr(w, http.StatusUnauthorized, "Identifiant ou mot de passe incorrect")
 		return
 	}
@@ -354,6 +398,8 @@ func adminLogin(w http.ResponseWriter, req *http.Request, p rqBody) {
 			writeErr(w, http.StatusInternalServerError, "Ouverture de session impossible")
 			return
 		}
+		audit(req, user, postsql.LevelInfo, postsql.CatAuth, "mot-de-passe-valide", user.Username,
+			"passkey attendue (second facteur)")
 		writeOK(w, map[string]interface{}{"status": "PASSKEY_REQUIRED", "pending": pending})
 		return
 	}
@@ -364,6 +410,7 @@ func adminLogin(w http.ResponseWriter, req *http.Request, p rqBody) {
 		return
 	}
 	setSessionCookie(w, req, token)
+	audit(req, user, postsql.LevelInfo, postsql.CatAuth, "connexion", user.Username, "mot de passe")
 	writeOK(w, map[string]interface{}{"status": "LOGGED_IN", "user": user})
 }
 
@@ -402,5 +449,7 @@ func adminRegister(w http.ResponseWriter, req *http.Request, p rqBody) {
 	}
 	setSessionCookie(w, req, token)
 	fmt.Printf("[ADMIN] compte cree : %s\n", user.Username)
+	audit(req, user, postsql.LevelWarn, postsql.CatAdmin, "compte-cree", user.Username,
+		"via invitation "+p.InviteCode)
 	writeOK(w, map[string]interface{}{"status": "USER_CREATED", "user": user})
 }
