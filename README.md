@@ -43,14 +43,35 @@ Uploaded files land in `./uploads/` on the host, the database lives in the
 
 ### Behind a reverse proxy, or with your own PostgreSQL
 
-Copy `docker-compose.override.yml.example` to `docker-compose.override.yml`; Compose
-merges it automatically. It covers two cases:
+Create a `docker-compose.override.yml` next to `docker-compose.yml`; Compose merges
+it automatically and the file is gitignored, so it stays yours.
 
 - **reverse proxy** (Nginx Proxy Manager, Traefik, Caddy): stop publishing the port
   and join your proxy network instead;
 - **existing PostgreSQL**: set `POSTGRESQL_HOST` in your `.env` and skip the bundled
   database. The bundled service is named `db`, so a container of yours named
   `postgres` is never shadowed.
+
+Both at once:
+
+```yaml
+services:
+  filetransfer:
+    ports: !override []
+    depends_on: !override []
+    networks:
+      - default
+      - proxy
+
+  # Do not start the bundled database.
+  db:
+    scale: 0
+
+networks:
+  proxy:
+    external: true
+    name: your-proxy-network
+```
 
 > [!IMPORTANT]
 > **A reverse proxy will cap your uploads long before this app does.** The server
