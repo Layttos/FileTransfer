@@ -7,7 +7,7 @@
 > [!CAUTION]
 >This project was strictly created by me and for my personal use with friends, to keep control of my own data.
 > This project has also seen the day because I wanted to send data with an unlimited size. Be strictly careful to who you share this to.
-> The files stored through this have no expiration date and are stored unencrypted on the disk.
+> The files stored through this have no expiration date and are stored encrypted on the disk.
 
 > [!NOTE]
 > If you wish to check some other projects I have done, please check my Github page.
