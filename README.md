@@ -140,6 +140,27 @@ Pre-requirements: a PostgreSQL server and Go 1.26 or higher.
 2. Uncomment `POSTGRESQL_HOST`, `POSTGRESQL_PORT` and `FILES_PATH` at the bottom of the file
 3. Start the server with `go run .`
 
+### Checking your changes
+
+The project has no build step, so nothing reads the page JavaScript before it
+reaches a visitor. `tools/check.sh` fills that gap:
+
+```bash
+./tools/check.sh
+```
+
+It runs `gofmt`, `go vet`, the build and the Go tests, then two web checks:
+
+- **`tools/check-pages.js`** executes every page's scripts against a minimal DOM,
+  each in its own process. It catches what kills a whole page — a function called
+  before it is defined, a wrong script order, a mistyped identifier — none of
+  which show up if you only look at HTTP status codes. It models `defer`, because
+  a deferred script runs *after* the inline ones;
+- **`tools/check-i18n.js`** verifies the French and English dictionaries declare
+  the same keys, and that every key a page uses actually exists. A missing key
+  never raises an error at runtime, it just quietly falls back — so it would only
+  surface when an English visitor meets a French sentence.
+
 # II. How to create an admin account
 
 Nothing manual to do — **on the very first start, the server prints an invitation
