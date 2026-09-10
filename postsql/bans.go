@@ -2,6 +2,7 @@ package postsql
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -142,8 +143,8 @@ func BanStatus(ip string) (*Ban, bool) {
 func BanIP(ip string, minutes int, reason, createdBy string, attempts int) error {
 	ReconnectDB()
 	ip = strings.TrimSpace(ip)
-	if ip == "" {
-		return fmt.Errorf("adresse vide")
+	if net.ParseIP(ip) == nil {
+		return fmt.Errorf("adresse IP invalide")
 	}
 	if IsAllowlisted(ip) {
 		return fmt.Errorf("cette adresse est sur la liste blanche")

@@ -63,6 +63,7 @@ the first `docker compose up`.
 | `POSTGRESQL_DATABASE` / `_USER` / `_PASSWORD` | `filetransfer` | Bundled database credentials. Only read when the volume is first created |
 | `POSTGRESQL_HOST` | `db` | Point it elsewhere to use your own PostgreSQL |
 | `PUBLIC_URL` | `http://localhost:3333` | Public address. Anchors passkeys, so it must match what visitors type |
+| `TRUSTED_PROXIES` | private ranges | Networks whose `X-Real-IP` / `X-Forwarded-For` headers are trusted. This address decides bans — narrow it to your proxy's exact address if other containers share its network |
 | `STORAGE_KEY` | generated on first start | Storage encryption key, 64 hex characters. Left empty, a key is written to `FILES_PATH/.storage-key` |
 | `STORAGE_MAX` | disk capacity | Ceiling shown by the storage bar (`500G`, `2T`, …) |
 | `AUDIT_RETENTION_DAYS` | `90` | Journal retention. `0` never purges |

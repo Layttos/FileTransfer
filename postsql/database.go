@@ -469,9 +469,28 @@ func AdminGetUserToken(username string) string {
 	return token
 }
 
+// validFileID n'accepte qu'un identifiant de la meme forme que ceux generes.
+// Sans cette verification, l'identifiant fourni se retrouvait tel quel dans un
+// chemin de fichier : "../x" faisait sortir le repertoire du dossier de stockage.
+func validFileID(id string) bool {
+	if len(id) == 0 || len(id) > 6 {
+		return false
+	}
+	for _, r := range id {
+		if !(r >= 'a' && r <= 'z') && !(r >= 'A' && r <= 'Z') && !(r >= '0' && r <= '9') {
+			return false
+		}
+	}
+	return true
+}
+
 func ChangeFileID(id string, new_id string) bool {
 	ReconnectDB()
 	if Exists(id) == false {
+		return false
+	}
+	if !validFileID(new_id) {
+		fmt.Fprintf(os.Stderr, "Identifiant refuse : %q\n", new_id)
 		return false
 	}
 

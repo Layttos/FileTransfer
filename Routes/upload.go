@@ -20,24 +20,83 @@ var bufferPool = sync.Pool{
 	},
 }
 
-// Derriere un reverse proxy (Nginx Proxy Manager), RemoteAddr vaut l'IP du
-// proxy et non celle du visiteur. On prefere donc les en-tetes qu'il pose.
-// Le conteneur n'expose aucun port et n'est joignable que par le proxy :
-// ces en-tetes ne peuvent pas etre falsifies depuis l'exterieur.
-func clientIP(rq *http.Request) string {
-	if ip := strings.TrimSpace(rq.Header.Get("X-Real-IP")); ip != "" {
-		return ip
+// Reseaux depuis lesquels les en-tetes de proxy sont crus. Par defaut les plages
+// privees, ou vit le reverse proxy. TRUSTED_PROXIES permet de restreindre a
+// l'adresse exacte du proxy, ce qui est preferable quand d'autres conteneurs
+// partagent le meme reseau.
+var trustedProxies = func() []*net.IPNet {
+	spec := os.Getenv("TRUSTED_PROXIES")
+	if strings.TrimSpace(spec) == "" {
+		spec = "127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"
 	}
-	if fwd := rq.Header.Get("X-Forwarded-For"); fwd != "" {
-		if ip := strings.TrimSpace(strings.Split(fwd, ",")[0]); ip != "" {
-			return ip
+	var nets []*net.IPNet
+	for _, entry := range strings.Split(spec, ",") {
+		if _, block, err := net.ParseCIDR(strings.TrimSpace(entry)); err == nil {
+			nets = append(nets, block)
 		}
 	}
-	ip, _, err := net.SplitHostPort(rq.RemoteAddr)
+	return nets
+}()
+
+func fromTrustedProxy(remoteAddr string) bool {
+	host, _, err := net.SplitHostPort(remoteAddr)
 	if err != nil {
-		return rq.RemoteAddr
+		host = remoteAddr
 	}
-	return ip
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	for _, block := range trustedProxies {
+		if block.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// clientIP resout l'adresse du visiteur.
+//
+// Derriere un reverse proxy, RemoteAddr vaut l'IP du proxy : il faut lire les
+// en-tetes qu'il pose. Mais ces en-tetes sont fournis par le client tant qu'un
+// proxy ne les remplace pas, et cette adresse decide desormais des
+// bannissements. Les croire sans condition permettrait de contourner un
+// bannissement, d'en faire prononcer un contre l'adresse de quelqu'un d'autre,
+// ou de se faire passer pour une adresse de la liste blanche.
+//
+// Ils ne sont donc lus que si la connexion vient d'un proxy de confiance.
+func clientIP(rq *http.Request) string {
+	direct := rq.RemoteAddr
+	if host, _, err := net.SplitHostPort(direct); err == nil {
+		direct = host
+	}
+
+	if !fromTrustedProxy(rq.RemoteAddr) {
+		return direct
+	}
+
+	// X-Real-IP est pose par le proxy, qui ecrase toute valeur du client.
+	if ip := strings.TrimSpace(rq.Header.Get("X-Real-IP")); net.ParseIP(ip) != nil {
+		return ip
+	}
+
+	// X-Forwarded-For est une liste ou le proxy ajoute a la suite : on remonte
+	// depuis la fin en ignorant les proxies connus, la premiere adresse
+	// restante est celle que le client n'a pas pu choisir.
+	if fwd := rq.Header.Get("X-Forwarded-For"); fwd != "" {
+		parts := strings.Split(fwd, ",")
+		for i := len(parts) - 1; i >= 0; i-- {
+			candidate := strings.TrimSpace(parts[i])
+			ip := net.ParseIP(candidate)
+			if ip == nil {
+				continue
+			}
+			if !fromTrustedProxy(candidate) {
+				return candidate
+			}
+		}
+	}
+	return direct
 }
 
 func HandleUpload(w http.ResponseWriter, rq *http.Request) {
