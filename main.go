@@ -43,6 +43,7 @@ func main() {
 	postsql.ReconnectDB()
 	defer postsql.Close()
 
+	routes.InitAssets()
 	postsql.StartAuditWriter()
 
 	// Les fichiers deposes avant l'activation du coffre sont convertis en tache

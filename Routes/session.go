@@ -112,7 +112,17 @@ func requireAdmin(w http.ResponseWriter, req *http.Request) (*postsql.AdminUser,
 // serveur qui, lui, a change.
 func serveHTML(w http.ResponseWriter, req *http.Request, path string) {
 	w.Header().Set("Cache-Control", "no-cache, must-revalidate")
-	http.ServeFile(w, req, path)
+
+	page, err := os.ReadFile(path)
+	if err != nil {
+		http.Error(w, "Page indisponible", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// Les ressources sont referencees avec l'empreinte de leur contenu, sans quoi
+	// le cache du reverse proxy servirait un ancien script a une page a jour.
+	fmt.Fprint(w, versionAssets(string(page)))
 }
 
 // serveStored sert un fichier du stockage en le dechiffrant a la volee.
