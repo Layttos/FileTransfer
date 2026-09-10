@@ -37,11 +37,26 @@ type rqBody struct {
 	// Administrateurs et invitations
 	AdminID int    `json:"adminID"`
 	Token   string `json:"token"`
+	Target  struct {
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Username  string `json:"username"`
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+	} `json:"target"`
 
 	// Cloud personnel
 	Folder    string `json:"folder"`
 	FileName  string `json:"fileName"`
 	SharePass string `json:"sharePassword"`
+
+	// Bannissements
+	IPAddr    string `json:"ipAddr"`
+	Minutes   int    `json:"minutes"`
+	Reason    string `json:"reason"`
+	Threshold int    `json:"threshold"`
+	Window    int    `json:"window"`
+	Allowlist string `json:"allowlist"`
 
 	// Journal
 	Category string `json:"category"`
@@ -306,6 +321,35 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 	case "admins_list":
 		writeOK(w, postsql.ListAdmins())
 
+	case "admin_create":
+		created, err := postsql.AdminCreateAccount(p.Target.FirstName, p.Target.LastName,
+			p.Target.Username, p.Target.Email, p.Target.Password, user.Username)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		audit(req, user, postsql.LevelWarn, postsql.CatAdmin, "compte-cree", created.Username,
+			"cree depuis le panneau")
+		writeOK(w, map[string]interface{}{"status": "ADMIN_CREATED", "user": created})
+
+	case "admin_update":
+		if err := postsql.AdminUpdateAccount(p.AdminID, p.Target.FirstName, p.Target.LastName,
+			p.Target.Username, p.Target.Email); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		audit(req, user, postsql.LevelWarn, postsql.CatAdmin, "compte-modifie", p.Target.Username, "")
+		writeOK(w, map[string]string{"status": "ADMIN_UPDATED"})
+
+	case "admin_set_password":
+		if err := postsql.AdminSetPassword(p.AdminID, p.Target.Password); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		audit(req, user, postsql.LevelWarn, postsql.CatAdmin, "mot-de-passe-reinitialise",
+			fmt.Sprintf("#%d", p.AdminID), "sessions du compte revoquees")
+		writeOK(w, map[string]string{"status": "PASSWORD_RESET"})
+
 	case "admin_delete":
 		if err := postsql.DeleteAdmin(p.AdminID, user.ID); err != nil {
 			writeErr(w, http.StatusBadRequest, err.Error())
@@ -366,6 +410,41 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 		}
 		audit(req, user, postsql.LevelInfo, postsql.CatPersonal, "deplacement", p.FileID, p.Folder)
 		writeOK(w, map[string]string{"status": "PERSONAL_MOVED"})
+
+	/* Bannissements */
+
+	case "bans_list":
+		writeOK(w, map[string]interface{}{
+			"bans":     postsql.ListBans(),
+			"settings": postsql.GetBanSettings(),
+		})
+
+	case "ban_create":
+		if err := postsql.BanIP(p.IPAddr, p.Minutes, strings.TrimSpace(p.Reason),
+			user.Username, 0); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		audit(req, user, postsql.LevelWarn, postsql.CatAdmin, "ip-bannie", p.IPAddr,
+			fmt.Sprintf("%d minute(s)", p.Minutes))
+		writeOK(w, map[string]string{"status": "IP_BANNED"})
+
+	case "ban_revoke":
+		if err := postsql.UnbanIP(p.IPAddr); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		audit(req, user, postsql.LevelInfo, postsql.CatAdmin, "ip-debannie", p.IPAddr, "")
+		writeOK(w, map[string]string{"status": "IP_UNBANNED"})
+
+	case "ban_settings_save":
+		if err := saveBanSettings(p); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		audit(req, user, postsql.LevelWarn, postsql.CatAdmin, "reglages-bannissement", user.Username,
+			fmt.Sprintf("%d tentative(s), %d minute(s)", p.Threshold, p.Minutes))
+		writeOK(w, map[string]interface{}{"status": "SETTINGS_SAVED", "settings": postsql.GetBanSettings()})
 
 	case "folder_create":
 		path, err := postsql.CreateFolder(user.ID, p.Folder)
@@ -430,6 +509,72 @@ func HandleAdminAPI(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+/* Bannissement des adresses */
+
+// refuseIfBanned coupe court si l'adresse est bannie, en indiquant le temps
+// restant. Renvoie true quand la requete a ete traitee.
+func refuseIfBanned(w http.ResponseWriter, req *http.Request) bool {
+	ip := clientIP(req)
+	ban, banned := postsql.BanStatus(ip)
+	if !banned {
+		return false
+	}
+
+	remaining := ban.RemainingMinutes
+	auditAnon(req, postsql.LevelWarn, postsql.CatAuth, "tentative-depuis-ip-bannie", ip,
+		fmt.Sprintf("encore %d minute(s)", remaining))
+
+	w.Header().Set("Retry-After", strconv.Itoa(remaining*60))
+	writeJSON(w, http.StatusForbidden, map[string]interface{}{
+		"error":   fmt.Sprintf("Trop de tentatives. Réessayez dans %d minute(s).", remaining),
+		"banned":  true,
+		"minutes": remaining,
+	})
+	return true
+}
+
+// noteLoginFailure compte l'echec et journalise le bannissement s'il en decoule.
+func noteLoginFailure(req *http.Request, identifier string) {
+	ip := clientIP(req)
+	if ban := postsql.RecordFailure(ip, identifier); ban != nil {
+		fmt.Printf("[SECURITE] %s bannie jusqu'a %s (%s)\n",
+			ip, ban.ExpiresAt.Format("15:04:05"), ban.Reason)
+		auditAnon(req, postsql.LevelError, postsql.CatAuth, "ip-bannie-automatiquement", ip, ban.Reason)
+	}
+}
+
+func saveBanSettings(p rqBody) error {
+	if p.Minutes < 1 || p.Minutes > 525600 {
+		return fmt.Errorf("durée invalide : entre 1 minute et un an")
+	}
+	if p.Threshold < 1 || p.Threshold > 100 {
+		return fmt.Errorf("seuil invalide : entre 1 et 100 tentatives")
+	}
+	if p.Window < 1 || p.Window > 1440 {
+		return fmt.Errorf("fenêtre invalide : entre 1 minute et 24 heures")
+	}
+
+	// La liste blanche est normalisee : une adresse par entree, sans espaces.
+	entries := []string{}
+	for _, raw := range strings.Split(p.Allowlist, ",") {
+		if e := strings.TrimSpace(raw); e != "" {
+			entries = append(entries, e)
+		}
+	}
+
+	for key, value := range map[string]string{
+		postsql.SettingBanMinutes:   strconv.Itoa(p.Minutes),
+		postsql.SettingBanThreshold: strconv.Itoa(p.Threshold),
+		postsql.SettingBanWindow:    strconv.Itoa(p.Window),
+		postsql.SettingBanAllowlist: strings.Join(entries, ","),
+	} {
+		if err := postsql.SetSetting(key, value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 /* Connexion et inscription */
 
 func adminLogin(w http.ResponseWriter, req *http.Request, p rqBody) {
@@ -453,10 +598,17 @@ func adminLogin(w http.ResponseWriter, req *http.Request, p rqBody) {
 		return
 	}
 
+	// Une adresse bannie est refusee avant meme de comparer un mot de passe :
+	// inutile de faire travailler bcrypt pour une tentative qui n'aboutira pas.
+	if refuseIfBanned(w, req) {
+		return
+	}
+
 	user, ok := postsql.AdminGetUser(identifier)
 	if !ok || !postsql.AdminVerifyPassword(user.ID, p.Password) {
 		auditAnon(req, postsql.LevelWarn, postsql.CatAuth, "connexion-refusee", identifier,
 			"identifiant ou mot de passe incorrect")
+		noteLoginFailure(req, identifier)
 		writeErr(w, http.StatusUnauthorized, "Identifiant ou mot de passe incorrect")
 		return
 	}
@@ -484,6 +636,7 @@ func adminLogin(w http.ResponseWriter, req *http.Request, p rqBody) {
 		return
 	}
 	setSessionCookie(w, req, token)
+	postsql.ClearAttempts(clientIP(req))
 	audit(req, user, postsql.LevelInfo, postsql.CatAuth, "connexion", user.Username, "mot de passe")
 	writeOK(w, map[string]interface{}{"status": "LOGGED_IN", "user": user})
 }

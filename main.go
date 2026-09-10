@@ -52,6 +52,7 @@ func main() {
 	postsql.BootstrapAdminInvitation()
 	postsql.PurgeExpiredSessions()
 	postsql.PurgeAudit()
+	postsql.PurgeExpiredBans()
 	postsql.Audit(postsql.AuditEntry{
 		Category: postsql.CatSystem, Action: "demarrage", Actor: "serveur",
 		Detail: "port " + port,
@@ -78,6 +79,11 @@ func main() {
 	http.HandleFunc(`/admin/webauthn/login/finish`, routes.HandleWebAuthnLoginFinish)
 	http.HandleFunc(`/{id}`, routes.HandleFile)
 
+	postsql.StartBanCache()
+
 	fmt.Println("Now listening on the port " + port)
-	http.ListenAndServe(":"+port, nil)
+
+	// Le filtre enveloppe toutes les routes : une adresse bannie se voit refuser
+	// l'acces au site entier, pas seulement a la connexion.
+	http.ListenAndServe(":"+port, routes.BanGuard(http.DefaultServeMux))
 }

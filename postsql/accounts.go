@@ -296,3 +296,127 @@ func randomHex(n int) (string, error) {
 	}
 	return hex.EncodeToString(b), nil
 }
+
+/* Creation et modification directes d'un compte */
+
+// nameTaken indique si un identifiant ou un e-mail appartient deja a un AUTRE
+// compte que celui donne. exceptID vaut 0 lors d'une creation.
+func nameTaken(username, email string, exceptID int) (bool, error) {
+	ReconnectDB()
+	var exists bool
+	err := connPool.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1 FROM users
+			WHERE (username = $1 OR email_address = $2) AND id <> $3
+		);`, username, email, exceptID).Scan(&exists)
+	return exists, err
+}
+
+// AdminCreateAccount cree un compte administrateur sans passer par une
+// invitation : tout administrateur peut en ouvrir un directement.
+func AdminCreateAccount(firstName, lastName, username, email, password, createdBy string) (*AdminUser, error) {
+	ReconnectDB()
+
+	firstName, lastName = strings.TrimSpace(firstName), strings.TrimSpace(lastName)
+	username, email = strings.TrimSpace(username), strings.TrimSpace(email)
+
+	if firstName == "" || lastName == "" || username == "" || email == "" {
+		return nil, fmt.Errorf("tous les champs sont requis")
+	}
+	if len(password) < 8 {
+		return nil, fmt.Errorf("le mot de passe doit faire au moins 8 caracteres")
+	}
+
+	taken, err := nameTaken(username, email, 0)
+	if err != nil {
+		return nil, err
+	}
+	if taken {
+		return nil, fmt.Errorf("ce nom d'utilisateur ou cet e-mail existe deja")
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	token, err := randomHex(32)
+	if err != nil {
+		return nil, err
+	}
+	confirmation, err := randomHex(32)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := connPool.Exec(`
+		INSERT INTO users (first_name, last_name, username, email_address,
+		                   invitation_used, password, confirmation_code, token, auth_policy)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`,
+		firstName, lastName, username, email,
+		"cree par "+createdBy, string(hashed), confirmation, token, PolicyPassword); err != nil {
+		return nil, err
+	}
+
+	user, ok := AdminGetUser(username)
+	if !ok {
+		return nil, fmt.Errorf("compte cree mais introuvable")
+	}
+	return user, nil
+}
+
+// AdminUpdateAccount modifie l'etat civil et les identifiants d'un compte.
+func AdminUpdateAccount(targetID int, firstName, lastName, username, email string) error {
+	ReconnectDB()
+
+	firstName, lastName = strings.TrimSpace(firstName), strings.TrimSpace(lastName)
+	username, email = strings.TrimSpace(username), strings.TrimSpace(email)
+
+	if firstName == "" || lastName == "" || username == "" || email == "" {
+		return fmt.Errorf("tous les champs sont requis")
+	}
+
+	taken, err := nameTaken(username, email, targetID)
+	if err != nil {
+		return err
+	}
+	if taken {
+		return fmt.Errorf("ce nom d'utilisateur ou cet e-mail est deja pris")
+	}
+
+	tag, err := connPool.Exec(`
+		UPDATE users SET first_name = $1, last_name = $2, username = $3, email_address = $4
+		WHERE id = $5;`, firstName, lastName, username, email, targetID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("compte introuvable")
+	}
+	return nil
+}
+
+// AdminSetPassword impose un mot de passe sans demander l'ancien : c'est une
+// remise a zero par un administrateur, pas un changement par le titulaire.
+// Toutes les sessions du compte tombent, faute de quoi un acces deja ouvert
+// survivrait a la reprise en main.
+func AdminSetPassword(targetID int, password string) error {
+	ReconnectDB()
+	if len(password) < 8 {
+		return fmt.Errorf("le mot de passe doit faire au moins 8 caracteres")
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	tag, err := connPool.Exec("UPDATE users SET password = $1 WHERE id = $2;", string(hashed), targetID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("compte introuvable")
+	}
+
+	RevokeAllSessions(targetID, "")
+	return nil
+}

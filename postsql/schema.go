@@ -68,6 +68,33 @@ func migrate(conn *pgx.Conn) {
 		);`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS personal_folders_unique ON personal_folders (user_id, path);`,
 
+		// Reglages modifiables depuis le panneau, sans redemarrage.
+		`CREATE TABLE IF NOT EXISTS settings (
+			key   VARCHAR(64) PRIMARY KEY,
+			value TEXT NOT NULL
+		);`,
+
+		// Tentatives de connexion echouees, pour compter avant de bannir.
+		`CREATE TABLE IF NOT EXISTS login_attempts (
+			id         BIGSERIAL PRIMARY KEY,
+			ip_addr    VARCHAR(45) NOT NULL,
+			at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			identifier VARCHAR(255) NOT NULL DEFAULT ''
+		);`,
+		`CREATE INDEX IF NOT EXISTS login_attempts_ip_idx ON login_attempts (ip_addr, at DESC);`,
+
+		// Adresses bannies. Une ligne par adresse : un nouveau bannissement
+		// prolonge le precedent au lieu de s'empiler.
+		`CREATE TABLE IF NOT EXISTS ip_bans (
+			ip_addr    VARCHAR(45) PRIMARY KEY,
+			banned_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			expires_at TIMESTAMP NOT NULL,
+			reason     VARCHAR(255) NOT NULL DEFAULT '',
+			attempts   INTEGER NOT NULL DEFAULT 0,
+			created_by VARCHAR(255) NOT NULL DEFAULT ''
+		);`,
+		`CREATE INDEX IF NOT EXISTS ip_bans_expires_idx ON ip_bans (expires_at);`,
+
 		// Journal d'audit : tout ce qui se passe sur le site, du depot anonyme
 		// d'un fichier a la revocation d'une passkey.
 		`CREATE TABLE IF NOT EXISTS audit_log (

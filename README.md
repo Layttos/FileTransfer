@@ -270,10 +270,36 @@ default, configurable with `AUDIT_RETENTION_DAYS`.
 
 Passkeys, password, login method, and active sessions with remote sign-out.
 
+### IP bans
+
+Three failed sign-ins from the same address within 15 minutes ban that address
+for an hour. A ban refuses **the whole site**, not just sign-in: home page,
+downloads, API, everything answers `403`.
+
+Everything is tunable from **Security → IP address bans**: attempts before a ban,
+the counting window, the ban duration, and an allowlist of addresses that are
+never banned. Bans can be lifted from there, and you can ban an address by hand.
+
+Two safeguards keep you from locking yourself out: an address on the allowlist
+can never be banned, by the counter or by hand; and a request carrying a valid
+administrator session passes through a ban, so you can always reach the panel to
+lift one.
+
+The check reads an in-memory cache, so it costs nothing even on the path of a
+multi-gigabyte download.
+
 ### Administrators
 
-List accounts, generate invitation codes from the interface instead of by hand in
-SQL, revoke an account.
+Any administrator can create, edit and delete administrator accounts — there are
+no privilege levels. Creating one from the panel needs no invitation code;
+invitation codes remain for letting someone sign themselves up.
+
+Editing covers the name, username, email and a password reset. A reset closes
+every session of that account, so a session opened before the reset does not
+survive it.
+
+Two limits: you cannot delete your own account, and you cannot delete the last
+one.
 
 ### Passkeys
 

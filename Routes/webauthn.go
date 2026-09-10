@@ -188,6 +188,10 @@ func HandleWebAuthnRegisterFinish(w http.ResponseWriter, req *http.Request) {
 /* Connexion par passkey */
 
 func HandleWebAuthnLoginBegin(w http.ResponseWriter, req *http.Request) {
+	// Une adresse bannie ne doit pas non plus pouvoir tenter une passkey.
+	if refuseIfBanned(w, req) {
+		return
+	}
 	wa, err := webAuthnFor(req)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
@@ -236,6 +240,9 @@ func HandleWebAuthnLoginBegin(w http.ResponseWriter, req *http.Request) {
 }
 
 func HandleWebAuthnLoginFinish(w http.ResponseWriter, req *http.Request) {
+	if refuseIfBanned(w, req) {
+		return
+	}
 	key := req.URL.Query().Get("ceremony")
 	pending := req.URL.Query().Get("pending")
 
@@ -279,6 +286,7 @@ func HandleWebAuthnLoginFinish(w http.ResponseWriter, req *http.Request) {
 
 	if err != nil || user == nil {
 		auditAnon(req, postsql.LevelWarn, postsql.CatAuth, "passkey-refusee", "", "")
+		noteLoginFailure(req, "passkey")
 		writeErr(w, http.StatusUnauthorized, "Passkey refusee")
 		return
 	}
@@ -303,6 +311,7 @@ func HandleWebAuthnLoginFinish(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	setSessionCookie(w, req, token)
+	postsql.ClearAttempts(clientIP(req))
 	methode := "passkey"
 	if pending != "" {
 		methode = "mot de passe + passkey"

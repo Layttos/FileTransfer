@@ -92,6 +92,21 @@
         .icon { width: 1.25rem; height: 1.25rem; flex: none; }
         .icon-lg { width: 2rem; height: 2rem; flex: none; }
         .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* Vue liste du cloud, dans l'esprit d'un explorateur de fichiers :
+           lignes alternées, sélection franche, en-têtes triables. */
+        #cloud-rows tr { cursor: default; }
+        html[data-theme="light"] #cloud-rows tr:nth-child(even) { background-color: #f9fafb; }
+        html[data-theme="dark"]  #cloud-rows tr:nth-child(even) { background-color: #111827; }
+        html[data-theme="light"] #cloud-rows tr:hover { background-color: #eef2ff; }
+        html[data-theme="dark"]  #cloud-rows tr:hover { background-color: #1e293b; }
+        #cloud-rows tr.selected,
+        #cloud-rows tr.selected:hover { background-color: #4f46e5; color: #ffffff; }
+        #cloud-rows tr.selected .muted,
+        #cloud-rows tr.selected .strong { color: #ffffff !important; }
+        .sort-mark { margin-left: .35rem; font-size: .7em; opacity: .7; }
+        thead th:hover { color: #4f46e5; }
+        html[data-theme="dark"] thead th:hover { color: #a5b4fc; }
     </style>
 </head>
 <body class="min-h-screen transition-colors duration-200">
@@ -285,8 +300,21 @@
                     <p id="cloud-progress-text" class="muted mt-1 text-xs"></p>
                 </div>
             </div>
-            <div id="cloud-grid" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"></div>
-            <p id="cloud-empty" class="muted hidden py-8 text-center text-sm" data-i18n="cloud.empty">Ce dossier est vide.</p>
+            <div class="card overflow-hidden rounded-lg border shadow-sm">
+                <table class="w-full text-left text-sm">
+                    <thead class="muted select-none text-xs">
+                        <tr class="rowline border-b">
+                            <th data-sort="name" class="cursor-pointer px-3 py-2.5 font-medium"><span data-i18n="col.name">Nom</span><span class="sort-mark"></span></th>
+                            <th data-sort="date" class="hidden cursor-pointer px-3 py-2.5 font-medium md:table-cell"><span data-i18n="col.modified">Date de modification</span><span class="sort-mark"></span></th>
+                            <th data-sort="size" class="cursor-pointer px-3 py-2.5 text-right font-medium"><span data-i18n="col.size">Taille</span><span class="sort-mark"></span></th>
+                            <th data-sort="kind" class="hidden cursor-pointer px-3 py-2.5 font-medium sm:table-cell"><span data-i18n="col.kind">Type</span><span class="sort-mark"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="cloud-rows"></tbody>
+                </table>
+                <p id="cloud-empty" class="muted hidden py-10 text-center text-sm" data-i18n="cloud.empty">Ce dossier est vide.</p>
+            </div>
+            <p id="cloud-count" class="muted px-1 text-xs"></p>
         </section>
 
         <!-- Journal -->
@@ -362,10 +390,55 @@
                 </div>
                 <div id="sessions-list" class="space-y-2"></div>
             </div>
+
+            <div class="card rounded-lg border p-4 shadow-sm md:p-5">
+                <h2 class="strong mb-1 flex items-center gap-2 text-lg font-semibold">
+                    <svg class="icon"><use href="#i-shield"/></svg>
+                    <span data-i18n="ban.title">Bannissements d'adresses IP</span>
+                </h2>
+                <p class="muted mb-4 text-sm" data-i18n="ban.hint">Une adresse bannie se voit refuser l'accès à tout le site.</p>
+
+                <div class="grid gap-2 sm:grid-cols-3">
+                    <label class="muted text-xs">
+                        <span data-i18n="ban.threshold">Tentatives avant bannissement</span>
+                        <input id="ban-threshold" type="number" min="1" max="100" class="mt-1 w-full rounded-md border px-3 py-2.5 text-sm">
+                    </label>
+                    <label class="muted text-xs">
+                        <span data-i18n="ban.window">Fenêtre de comptage (minutes)</span>
+                        <input id="ban-window" type="number" min="1" max="1440" class="mt-1 w-full rounded-md border px-3 py-2.5 text-sm">
+                    </label>
+                    <label class="muted text-xs">
+                        <span data-i18n="ban.minutes">Durée du bannissement (minutes)</span>
+                        <input id="ban-minutes" type="number" min="1" max="525600" class="mt-1 w-full rounded-md border px-3 py-2.5 text-sm">
+                    </label>
+                </div>
+                <label class="muted mt-3 block text-xs">
+                    <span data-i18n="ban.allowlist">Adresses jamais bannies</span>
+                    <input id="ban-allowlist" type="text" class="mt-1 w-full rounded-md border px-3 py-2.5 text-sm">
+                </label>
+                <div class="mt-3 flex flex-wrap items-center gap-3">
+                    <button id="ban-save" class="btn rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700" data-i18n="ban.save">Enregistrer les réglages</button>
+                    <p id="ban-current" class="muted text-xs"></p>
+                </div>
+
+                <div class="rowline mt-5 border-t pt-4">
+                    <p class="strong mb-2 text-sm font-medium" data-i18n="ban.manual">Bannir une adresse</p>
+                    <div class="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                        <input id="ban-ip" type="text" placeholder="Adresse IP" data-i18n-placeholder="ban.ipPlaceholder" class="rounded-md border px-3 py-2.5 text-sm">
+                        <input id="ban-reason" type="text" placeholder="Motif (facultatif)" data-i18n-placeholder="ban.reasonPlaceholder" class="rounded-md border px-3 py-2.5 text-sm">
+                        <button id="ban-add" class="btn rounded-md border border-red-300 px-4 py-2.5 text-sm text-red-600 dark:border-red-500/40 dark:text-red-400" data-i18n="ban.add">Bannir</button>
+                    </div>
+                </div>
+
+                <div id="bans-list" class="mt-4 space-y-2"></div>
+            </div>
         </section>
 
         <!-- Administrateurs -->
         <section id="panel-admins" class="panel space-y-4">
+            <div class="flex justify-end">
+                <button id="admin-new" class="btn rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700" data-i18n="adm.create">Créer un compte</button>
+            </div>
             <div id="admins-list" class="space-y-2"></div>
             <div class="card rounded-lg border p-4 shadow-sm md:p-5">
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -395,6 +468,25 @@
         <button id="viewer-close" class="btn flex items-center rounded-md border px-3 py-2 text-xs" data-i18n-aria="dash.close" data-i18n="dash.close">Fermer</button>
     </header>
     <div id="viewer-body" class="flex min-h-0 flex-1 items-center justify-center overflow-auto"></div>
+</div>
+
+<!-- Création et modification d'un compte administrateur -->
+<div id="admin-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+    <div class="card w-full max-w-md rounded-lg border p-5 shadow-2xl">
+        <h2 id="admin-modal-title" class="strong mb-4 text-lg font-semibold"></h2>
+        <div class="grid gap-2 sm:grid-cols-2">
+            <input id="am-first" type="text" data-i18n-placeholder="adm.firstName" class="rounded-md border px-3 py-2.5 text-sm">
+            <input id="am-last" type="text" data-i18n-placeholder="adm.lastName" class="rounded-md border px-3 py-2.5 text-sm">
+        </div>
+        <input id="am-username" type="text" autocomplete="off" data-i18n-placeholder="adm.username" class="mt-2 w-full rounded-md border px-3 py-2.5 text-sm">
+        <input id="am-email" type="email" autocomplete="off" data-i18n-placeholder="adm.email" class="mt-2 w-full rounded-md border px-3 py-2.5 text-sm">
+        <input id="am-password" type="password" autocomplete="new-password" class="mt-2 w-full rounded-md border px-3 py-2.5 text-sm">
+        <p id="am-note" class="muted mt-2 text-xs"></p>
+        <div class="mt-4 flex flex-wrap gap-2">
+            <button id="am-save" class="btn flex-1 rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700" data-i18n="adm.save">Enregistrer</button>
+            <button id="am-cancel" class="btn rounded-md border px-4 py-2.5 text-sm" data-i18n="adm.cancel">Annuler</button>
+        </div>
+    </div>
 </div>
 
 <!-- Résultat d'un partage -->
@@ -504,7 +596,7 @@ const LOADERS = {
     files: function () { loadFiles(1); },
     cloud: function () { loadCloud(currentFolder); },
     journal: function () { loadJournal(1); },
-    security: loadSecurity,
+    security: function () { loadSecurity(); loadBans(); },
     admins: loadAdmins
 };
 
@@ -713,6 +805,41 @@ function fileById(id) {
     return cloudFiles.filter(function (f) { return f.id === id; })[0] || null;
 }
 
+// Type lisible, comme la colonne « Type » d'un explorateur de fichiers.
+function kindLabel(name, isFolder) {
+    if (isFolder) return t('kind.folder');
+    const ext = String(name || '').indexOf('.') !== -1
+        ? String(name).split('.').pop().toUpperCase() : '';
+    if (!ext) return t('kind.fileNoExt');
+    return t('kind.' + iconForFile(name), { ext: ext });
+}
+
+// Tri courant. Comme dans un explorateur, les dossiers restent groupés en tête
+// quel que soit le critère.
+let cloudSort = { key: 'name', asc: true };
+
+function sortEntries(entries) {
+    const dir = cloudSort.asc ? 1 : -1;
+    return entries.sort(function (a, b) {
+        if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+        switch (cloudSort.key) {
+            case 'size': return (a.size - b.size) * dir;
+            case 'date': return (new Date(a.date) - new Date(b.date)) * dir;
+            case 'kind': return a.kind.localeCompare(b.kind, undefined, { numeric: true }) * dir;
+            default:     return a.name.localeCompare(b.name, undefined, { numeric: true }) * dir;
+        }
+    });
+}
+
+function renderSortMarks() {
+    document.querySelectorAll('th[data-sort]').forEach(function (th) {
+        const mark = th.querySelector('.sort-mark');
+        mark.textContent = th.dataset.sort === cloudSort.key ? (cloudSort.asc ? '▲' : '▼') : '';
+    });
+}
+
+let cloudEntries = [];
+
 async function loadCloud(folder) {
     try {
         const data = await api('personal_list', { folder: folder });
@@ -721,31 +848,64 @@ async function loadCloud(folder) {
         document.getElementById('cloud-breadcrumb').innerHTML = breadcrumb(currentFolder);
         document.getElementById('cloud-up').disabled = currentFolder === '/';
 
-        const folders = data.folders.map(function (f) {
-            return '<button data-folder="' + esc(f) + '" data-kind="folder" data-name="' + esc(f) + '" class="card flex flex-col items-center gap-2 rounded-lg border p-4 text-center transition hover:border-indigo-400">' +
-                '<span class="text-amber-500">' + icon('folder', 'h-10 w-10') + '</span>' +
-                '<span class="strong ellipsis w-full text-xs font-medium">' + esc(f) + '</span></button>';
-        });
+        cloudEntries = (data.folders || []).map(function (name) {
+            return { isFolder: true, name: name, size: -1, date: null, kind: t('kind.folder') };
+        }).concat(cloudFiles.map(function (f) {
+            return {
+                isFolder: false, id: f.id, name: f.file_name, size: f.file_size,
+                date: f.created_at, kind: kindLabel(f.file_name, false)
+            };
+        }));
 
-        const files = data.files.map(function (f) {
-            return '<div data-kind="file" data-id="' + esc(f.id) + '" data-name="' + esc(f.file_name) + '" data-size="' + f.file_size + '" class="card flex flex-col rounded-lg border p-3 transition hover:border-indigo-400">' +
-                '<div class="flex flex-col items-center gap-2 text-center">' +
-                    '<span class="text-indigo-600 dark:text-indigo-400">' + icon(iconForFile(f.file_name), 'h-10 w-10') + '</span>' +
-                    '<span class="strong ellipsis w-full text-xs font-medium" title="' + esc(f.file_name) + '">' + esc(f.file_name) + '</span>' +
-                    '<span class="muted text-[11px]">' + humanSize(f.file_size) + '</span>' +
-                '</div>' +
-                '<div class="mt-3 grid grid-cols-4 gap-1">' +
-                    '<a href="/admin/personal/download?id=' + encodeURIComponent(f.id) + '" title="' + t('act.download') + '" aria-label="' + t('act.download') + '" class="btn flex items-center justify-center rounded border py-2 hover:border-indigo-400">' + icon('download', 'icon h-4 w-4') + '</a>' +
-                    '<button data-act="prename" data-id="' + esc(f.id) + '" title="Renommer" aria-label="' + t('act.rename') + '" class="btn flex items-center justify-center rounded border py-2 hover:border-indigo-400">' + icon('edit', 'icon h-4 w-4') + '</button>' +
-                    '<button data-act="pmove" data-id="' + esc(f.id) + '" title="' + t('menu.move') + '" aria-label="' + t('menu.move') + '" class="btn flex items-center justify-center rounded border py-2 hover:border-indigo-400">' + icon('move', 'icon h-4 w-4') + '</button>' +
-                    '<button data-act="pdelete" data-id="' + esc(f.id) + '" title="Supprimer" aria-label="' + t('act.delete') + '" class="btn flex items-center justify-center rounded border border-red-300 py-2 text-red-600 dark:border-red-500/40 dark:text-red-400">' + icon('trash', 'icon h-4 w-4') + '</button>' +
-                '</div></div>';
-        });
-
-        document.getElementById('cloud-grid').innerHTML = folders.concat(files).join('');
-        document.getElementById('cloud-empty').classList.toggle('hidden', folders.length + files.length > 0);
+        renderCloudRows();
     } catch (e) { toast(e.message, true); }
 }
+
+function renderCloudRows() {
+    const rows = sortEntries(cloudEntries.slice());
+    const body = document.getElementById('cloud-rows');
+
+    body.innerHTML = rows.map(function (e) {
+        const attrs = e.isFolder
+            ? 'data-kind="folder" data-folder="' + esc(e.name) + '" data-name="' + esc(e.name) + '"'
+            : 'data-kind="file" data-id="' + esc(e.id) + '" data-name="' + esc(e.name) + '" data-size="' + e.size + '"';
+        const tint = e.isFolder ? 'text-amber-500' : 'text-indigo-600 dark:text-indigo-400';
+
+        return '<tr ' + attrs + ' class="rowline border-b last:border-0">' +
+            '<td class="px-3 py-2">' +
+                '<div class="flex items-center gap-2">' +
+                    '<span class="' + tint + '">' + icon(e.isFolder ? 'folder' : iconForFile(e.name), 'icon h-4 w-4') + '</span>' +
+                    '<span class="strong ellipsis">' + esc(e.name) + '</span>' +
+                '</div></td>' +
+            '<td class="muted hidden whitespace-nowrap px-3 py-2 text-xs md:table-cell">' +
+                (e.date ? humanDate(e.date) : '—') + '</td>' +
+            '<td class="muted whitespace-nowrap px-3 py-2 text-right text-xs">' +
+                (e.isFolder ? '—' : humanSize(e.size)) + '</td>' +
+            '<td class="muted ellipsis hidden px-3 py-2 text-xs sm:table-cell">' + esc(e.kind) + '</td>' +
+            '</tr>';
+    }).join('');
+
+    document.getElementById('cloud-empty').classList.toggle('hidden', rows.length > 0);
+    document.getElementById('cloud-count').textContent = t('cloud.items', { n: rows.length });
+    renderSortMarks();
+}
+
+// Un clic sur un en-tête trie ; recliquer la même colonne inverse le sens.
+document.querySelectorAll('th[data-sort]').forEach(function (th) {
+    th.addEventListener('click', function () {
+        const key = th.dataset.sort;
+        if (cloudSort.key === key) cloudSort.asc = !cloudSort.asc;
+        else cloudSort = { key: key, asc: true };
+        renderCloudRows();
+    });
+});
+
+// Sélection à la souris, comme dans un explorateur.
+document.getElementById('cloud-rows').addEventListener('click', function (ev) {
+    const row = ev.target.closest('tr[data-kind]');
+    document.querySelectorAll('#cloud-rows tr.selected').forEach(function (r) { r.classList.remove('selected'); });
+    if (row) row.classList.add('selected');
+});
 
 document.getElementById('cloud-breadcrumb').addEventListener('click', function (ev) {
     const btn = ev.target.closest('button[data-goto]');
@@ -758,46 +918,19 @@ document.getElementById('cloud-up').addEventListener('click', function () {
 });
 document.getElementById('cloud-mkdir').addEventListener('click', function () { createFolder(); });
 // Double-clic : ouvrir le fichier, entrer dans le dossier — comme un explorateur.
-document.getElementById('cloud-grid').addEventListener('dblclick', function (ev) {
-    const folderBtn = ev.target.closest('button[data-folder]');
-    if (folderBtn) { loadCloud(currentFolder + folderBtn.dataset.folder + '/'); return; }
+document.getElementById('cloud-rows').addEventListener('dblclick', function (ev) {
+    const folderRow = ev.target.closest('tr[data-kind="folder"]');
+    if (folderRow) { loadCloud(currentFolder + folderRow.dataset.folder + '/'); return; }
 
-    const card = ev.target.closest('[data-kind="file"]');
-    if (!card || ev.target.closest('button, a')) return;
-    const f = fileById(card.dataset.id);
+    const row = ev.target.closest('tr[data-kind="file"]');
+    if (!row) return;
+    const f = fileById(row.dataset.id);
     if (!f) return;
     if (canPreview(f.file_name) || canEdit(f.file_name, f.file_size)) {
         openViewer(f);
     } else {
         window.location.href = '/admin/personal/download?id=' + encodeURIComponent(f.id);
     }
-});
-
-document.getElementById('cloud-grid').addEventListener('click', async function (ev) {
-    const folderBtn = ev.target.closest('button[data-folder]');
-    if (folderBtn) { loadCloud(currentFolder + folderBtn.dataset.folder + '/'); return; }
-
-    const btn = ev.target.closest('button[data-act]');
-    if (!btn) return;
-    const id = btn.dataset.id;
-    try {
-        if (btn.dataset.act === 'pdelete') {
-            if (!confirm(t('cloud.confirmDeleteCloud'))) return;
-            await api('personal_delete', { fileID: id });
-            toast(t('cloud.deleted'));
-        } else if (btn.dataset.act === 'prename') {
-            const name = prompt(t('cloud.promptRename'));
-            if (!name) return;
-            await api('personal_rename', { fileID: id, newFileName: name });
-            toast(t('cloud.renamed'));
-        } else if (btn.dataset.act === 'pmove') {
-            const dest = prompt(t('cloud.promptMove'), currentFolder);
-            if (dest === null) return;
-            await api('personal_move', { fileID: id, folder: dest });
-            toast(t('cloud.moved'));
-        }
-        loadCloud(currentFolder);
-    } catch (e) { toast(e.message, true); }
 });
 
 document.getElementById('cloud-file').addEventListener('change', function () {
@@ -1240,6 +1373,7 @@ document.addEventListener('keydown', function (ev) {
     if (ev.key !== 'Escape') return;
     closeCtx();
     closeShare();
+    closeAdminModal();
     if (!viewer.classList.contains('hidden')) closeViewer(false);
 });
 window.addEventListener('scroll', closeCtx, true);
@@ -1545,7 +1679,82 @@ document.getElementById('pwd-save').addEventListener('click', async function () 
     } catch (e) { toast(e.message, true); }
 });
 
+/* ---------- Bannissements ---------- */
+async function loadBans() {
+    try {
+        const data = await api('bans_list');
+        const st = data.settings;
+
+        document.getElementById('ban-threshold').value = st.threshold;
+        document.getElementById('ban-window').value = st.window;
+        document.getElementById('ban-minutes').value = st.minutes;
+        document.getElementById('ban-allowlist').value = (st.allowlist || []).join(', ');
+        document.getElementById('ban-current').textContent = t('ban.current', {
+            threshold: st.threshold, window: st.window, minutes: st.minutes
+        });
+
+        const box = document.getElementById('bans-list');
+        box.innerHTML = data.bans.length ? data.bans.map(function (b) {
+            return '<div class="rowline flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">' +
+                '<div class="min-w-0 flex-1">' +
+                    '<p class="strong text-sm font-medium"><code>' + esc(b.ip_addr) + '</code> ' +
+                    (b.active
+                        ? '<span class="ml-1 rounded bg-red-600 px-1.5 py-0.5 text-[10px] text-white">' + esc(t('ban.active')) + '</span>'
+                        : '<span class="muted ml-1 text-[10px]">' + esc(t('ban.expired')) + '</span>') + '</p>' +
+                    (b.reason ? '<p class="muted text-xs">' + esc(b.reason) + '</p>' : '') +
+                    '<p class="muted text-xs">' + esc(t('ban.since', { date: humanDate(b.banned_at) })) +
+                        ' · ' + esc(t('ban.until', { date: humanDate(b.expires_at) })) +
+                        ' · ' + esc(b.created_by ? t('ban.by', { who: b.created_by }) : t('ban.auto')) + '</p>' +
+                '</div>' +
+                (b.active ? '<button data-act="unban" data-ip="' + esc(b.ip_addr) +
+                    '" class="btn rounded-md border px-3 py-2 text-xs">' + esc(t('ban.revoke')) + '</button>' : '') +
+                '</div>';
+        }).join('') : '<p class="muted text-sm">' + esc(t('ban.none')) + '</p>';
+    } catch (e) { toast(e.message, true); }
+}
+
+document.getElementById('ban-save').addEventListener('click', async function () {
+    try {
+        await api('ban_settings_save', {
+            threshold: Number(document.getElementById('ban-threshold').value),
+            window: Number(document.getElementById('ban-window').value),
+            minutes: Number(document.getElementById('ban-minutes').value),
+            allowlist: document.getElementById('ban-allowlist').value
+        });
+        toast(t('ban.saved'));
+        loadBans();
+    } catch (e) { toast(e.message, true); }
+});
+
+document.getElementById('ban-add').addEventListener('click', async function () {
+    const ip = document.getElementById('ban-ip').value.trim();
+    if (!ip) return;
+    try {
+        await api('ban_create', {
+            ipAddr: ip,
+            reason: document.getElementById('ban-reason').value.trim(),
+            minutes: Number(document.getElementById('ban-minutes').value) || 0
+        });
+        document.getElementById('ban-ip').value = '';
+        document.getElementById('ban-reason').value = '';
+        toast(t('ban.added'));
+        loadBans();
+    } catch (e) { toast(e.message, true); }
+});
+
+document.getElementById('bans-list').addEventListener('click', async function (ev) {
+    const btn = ev.target.closest('button[data-act="unban"]');
+    if (!btn) return;
+    if (!confirm(t('ban.confirmRevoke', { ip: btn.dataset.ip }))) return;
+    try {
+        await api('ban_revoke', { ipAddr: btn.dataset.ip });
+        toast(t('ban.revoked'));
+        loadBans();
+    } catch (e) { toast(e.message, true); }
+});
+
 /* ---------- Administrateurs ---------- */
+let lastAdmins = [];
 function policyLabel(p) {
     var map = { password: 'pol.password', passkey_or_password: 'pol.either', password_and_passkey: 'pol.both' };
     return map[p] ? t(map[p]) : p;
@@ -1553,6 +1762,7 @@ function policyLabel(p) {
 async function loadAdmins() {
     try {
         const [admins, invites] = await Promise.all([api('admins_list'), api('invites_list')]);
+        lastAdmins = admins;
 
         document.getElementById('admins-list').innerHTML = admins.map(function (a) {
             return '<div class="card rounded-lg border p-3 shadow-sm">' +
@@ -1564,8 +1774,11 @@ async function loadAdmins() {
                         '<p class="muted mt-1 text-xs">' + esc(t('adm.stats', {
                             policy: policyLabel(a.auth_policy), passkeys: a.passkeys, sessions: a.sessions })) + '</p>' +
                     '</div>' +
-                    (a.id === ME.id ? '' :
-                        '<button data-act="adel" data-id="' + a.id + '" aria-label="' + t('act.delete') + '" class="btn flex items-center justify-center rounded-md border border-red-300 px-3 py-2 text-red-600 dark:border-red-500/40 dark:text-red-400">' + icon('trash', 'icon h-4 w-4') + '</button>') +
+                    '<div class="flex shrink-0 gap-2">' +
+                        '<button data-act="aedit" data-id="' + a.id + '" aria-label="' + t('adm.edit') + '" class="btn flex items-center justify-center rounded-md border px-3 py-2">' + icon('edit', 'icon h-4 w-4') + '</button>' +
+                        (a.id === ME.id ? '' :
+                            '<button data-act="adel" data-id="' + a.id + '" aria-label="' + t('act.delete') + '" class="btn flex items-center justify-center rounded-md border border-red-300 px-3 py-2 text-red-600 dark:border-red-500/40 dark:text-red-400">' + icon('trash', 'icon h-4 w-4') + '</button>') +
+                    '</div>' +
                 '</div></div>';
         }).join('');
 
@@ -1586,7 +1799,67 @@ async function loadAdmins() {
         }).join('') : '<p class="muted text-sm">' + esc(t('adm.noInvites')) + '</p>';
     } catch (e) { toast(e.message, true); }
 }
+/* Création et modification d'un compte */
+const adminModal = document.getElementById('admin-modal');
+let editingId = null;   // null = création
+
+function openAdminModal(account) {
+    editingId = account ? account.id : null;
+    document.getElementById('admin-modal-title').textContent = t(account ? 'adm.editTitle' : 'adm.createTitle');
+    document.getElementById('am-first').value = account ? account.first_name : '';
+    document.getElementById('am-last').value = account ? account.last_name : '';
+    document.getElementById('am-username').value = account ? account.username : '';
+    document.getElementById('am-email').value = account ? account.email : '';
+    document.getElementById('am-password').value = '';
+    document.getElementById('am-password').placeholder = t(account ? 'adm.newPassword' : 'adm.password');
+    document.getElementById('am-note').textContent = account ? t('adm.resetWarning') : '';
+    adminModal.classList.remove('hidden');
+    adminModal.classList.add('flex');
+    document.getElementById('am-first').focus();
+}
+function closeAdminModal() {
+    adminModal.classList.add('hidden');
+    adminModal.classList.remove('flex');
+    editingId = null;
+}
+document.getElementById('am-cancel').addEventListener('click', closeAdminModal);
+adminModal.addEventListener('click', function (ev) { if (ev.target === adminModal) closeAdminModal(); });
+document.getElementById('admin-new').addEventListener('click', function () { openAdminModal(null); });
+
+document.getElementById('am-save').addEventListener('click', async function () {
+    const target = {
+        firstName: document.getElementById('am-first').value.trim(),
+        lastName: document.getElementById('am-last').value.trim(),
+        username: document.getElementById('am-username').value.trim(),
+        email: document.getElementById('am-email').value.trim(),
+        password: document.getElementById('am-password').value
+    };
+    try {
+        if (editingId === null) {
+            await api('admin_create', { target: target });
+            toast(t('adm.created'));
+        } else {
+            await api('admin_update', { adminID: editingId, target: target });
+            // Le mot de passe n'est repris que s'il a été saisi.
+            if (target.password) {
+                await api('admin_set_password', { adminID: editingId, target: target });
+                toast(t('adm.passwordReset'));
+            } else {
+                toast(t('adm.updated'));
+            }
+        }
+        closeAdminModal();
+        loadAdmins();
+    } catch (e) { toast(e.message, true); }
+});
+
 document.getElementById('admins-list').addEventListener('click', async function (ev) {
+    const edit = ev.target.closest('button[data-act="aedit"]');
+    if (edit) {
+        const account = (lastAdmins || []).filter(function (a) { return a.id === Number(edit.dataset.id); })[0];
+        if (account) openAdminModal(account);
+        return;
+    }
     const btn = ev.target.closest('button[data-act="adel"]');
     if (!btn) return;
     if (!confirm(t('adm.confirmDelete'))) return;

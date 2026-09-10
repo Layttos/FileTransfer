@@ -277,6 +277,13 @@ curl -H "X-File-Password: secret" -O -J "https://your-domain/aB3xY9?download=tru
                         <tr class="rowline border-b"><td><code>invite_create</code></td><td>—</td><td>Generates a single-use code.</td></tr>
                         <tr class="rowline border-b"><td><code>invite_delete</code></td><td><code>token</code></td><td>Deletes an unused code.</td></tr>
                         <tr class="rowline border-b"><td><code>audit_list</code></td><td><code>category</code>, <code>level</code>, <code>search</code>, <code>offset</code>, <code>limit</code></td><td><code>{entries, total}</code>. Categories: <code>auth</code>, <code>upload</code>, <code>download</code>, <code>file</code>, <code>personal</code>, <code>admin</code>, <code>system</code>. Levels: <code>info</code>, <code>warn</code>, <code>error</code>.</td></tr>
+                                                <tr class="rowline border-b"><td><code>bans_list</code></td><td>—</td><td>Bans and the settings in force.</td></tr>
+                        <tr class="rowline border-b"><td><code>ban_create</code></td><td><code>ipAddr</code>, <code>minutes</code>, <code>reason</code></td><td>Bans an address. Refused if it is on the allowlist.</td></tr>
+                        <tr class="rowline border-b"><td><code>ban_revoke</code></td><td><code>ipAddr</code></td><td>Lifts a ban and resets that address's attempt counter.</td></tr>
+                        <tr class="rowline border-b"><td><code>ban_settings_save</code></td><td><code>threshold</code>, <code>window</code>, <code>minutes</code>, <code>allowlist</code></td><td>Tunes the automatic ban.</td></tr>
+                        <tr class="rowline border-b"><td><code>admin_create</code></td><td><code>target</code>: first name, last name, username, email, password</td><td>Creates an account without an invitation.</td></tr>
+                        <tr class="rowline border-b"><td><code>admin_update</code></td><td><code>adminID</code>, <code>target</code></td><td>Edits an account's name and credentials.</td></tr>
+                        <tr class="rowline border-b"><td><code>admin_set_password</code></td><td><code>adminID</code>, <code>target.password</code></td><td>Forces a password and closes that account's sessions.</td></tr>
                         <tr class="rowline border-b"><td><code>audit_stats</code></td><td>—</td><td>Event count per category over 24 hours.</td></tr>
                     </tbody>
                 </table>

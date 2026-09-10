@@ -277,6 +277,13 @@ curl -H "X-File-Password: secret" -O -J "https://votre-domaine/aB3xY9?download=t
                         <tr class="rowline border-b"><td><code>invite_create</code></td><td>—</td><td>Génère un code à usage unique.</td></tr>
                         <tr class="rowline border-b"><td><code>invite_delete</code></td><td><code>token</code></td><td>Supprime un code non utilisé.</td></tr>
                         <tr class="rowline border-b"><td><code>audit_list</code></td><td><code>category</code>, <code>level</code>, <code>search</code>, <code>offset</code>, <code>limit</code></td><td><code>{entries, total}</code>. Catégories : <code>auth</code>, <code>upload</code>, <code>download</code>, <code>file</code>, <code>personal</code>, <code>admin</code>, <code>system</code>. Niveaux : <code>info</code>, <code>warn</code>, <code>error</code>.</td></tr>
+                                                <tr class="rowline border-b"><td><code>bans_list</code></td><td>—</td><td>Bannissements et réglages en vigueur.</td></tr>
+                        <tr class="rowline border-b"><td><code>ban_create</code></td><td><code>ipAddr</code>, <code>minutes</code>, <code>reason</code></td><td>Bannit une adresse. Refusé si elle est sur la liste blanche.</td></tr>
+                        <tr class="rowline border-b"><td><code>ban_revoke</code></td><td><code>ipAddr</code></td><td>Lève un bannissement et remet le compteur de tentatives à zéro.</td></tr>
+                        <tr class="rowline border-b"><td><code>ban_settings_save</code></td><td><code>threshold</code>, <code>window</code>, <code>minutes</code>, <code>allowlist</code></td><td>Règle le bannissement automatique.</td></tr>
+                        <tr class="rowline border-b"><td><code>admin_create</code></td><td><code>target</code> : prénom, nom, identifiant, e-mail, mot de passe</td><td>Crée un compte sans invitation.</td></tr>
+                        <tr class="rowline border-b"><td><code>admin_update</code></td><td><code>adminID</code>, <code>target</code></td><td>Modifie l'état civil et les identifiants d'un compte.</td></tr>
+                        <tr class="rowline border-b"><td><code>admin_set_password</code></td><td><code>adminID</code>, <code>target.password</code></td><td>Impose un mot de passe et ferme les sessions du compte.</td></tr>
                         <tr class="rowline border-b"><td><code>audit_stats</code></td><td>—</td><td>Nombre d'évènements par catégorie sur 24 heures.</td></tr>
                     </tbody>
                 </table>
