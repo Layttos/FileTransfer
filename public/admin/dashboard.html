@@ -194,8 +194,6 @@
     </symbol>
 </svg>
 
-<div id="langSwitch" class="fixed bottom-20 left-4 z-40 md:bottom-4"></div>
-
 <button id="themeToggle" type="button" class="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full shadow-xl ring-1 ring-black/10 transition hover:scale-105 md:bottom-4" data-i18n-aria="theme.toDark"></button>
 
 <div id="toast" class="fixed left-1/2 top-4 z-50 hidden w-[92%] max-w-sm -translate-x-1/2 rounded-md px-4 py-3 text-sm shadow-lg md:left-auto md:right-4 md:translate-x-0"></div>
@@ -208,6 +206,7 @@
             <p id="m-title" class="strong truncate text-base font-bold" data-i18n="nav.overview.title">Vue d'ensemble</p>
             <p id="m-user" class="muted truncate text-xs"></p>
         </div>
+        <div id="langSwitchMobile" class="shrink-0"></div>
         <button id="logout-top" class="btn flex items-center gap-1.5 rounded-md border border-red-300 px-3 py-2 text-sm text-red-600 dark:border-red-500/40 dark:text-red-400" data-i18n-aria="dash.logout">
             <svg class="icon"><use href="#i-logout"/></svg>
         </button>
@@ -222,6 +221,7 @@
         <nav id="nav-desktop" class="flex flex-col gap-1 px-3"></nav>
         <div class="mt-auto p-3">
             <p id="side-user" class="muted truncate px-3 text-xs"></p>
+            <div id="langSwitch" class="mt-2 px-3"></div>
             <button id="logout" class="btn mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-red-300 px-3 py-2 text-sm text-red-600 transition hover:bg-red-50 dark:border-red-500/40 dark:text-red-400 dark:hover:bg-red-500/10">
                 <svg class="icon"><use href="#i-logout"/></svg> <span data-i18n="dash.logout">Se déconnecter</span>
             </button>
@@ -1633,7 +1633,11 @@ let ME = {};
 })();
 
 /* ---------- Langue ---------- */
-document.getElementById('langSwitch').innerHTML = ftLangSwitcher();
+// Deux emplacements : la barre latérale sur ordinateur, l'en-tête sur mobile.
+['langSwitch', 'langSwitchMobile'].forEach(function (id) {
+    const box = document.getElementById(id);
+    if (box) box.innerHTML = ftLangSwitcher();
+});
 ftApplyI18n();
 
 // Presque tout le tableau de bord est construit en JavaScript : au changement de
