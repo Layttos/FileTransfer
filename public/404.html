@@ -4,9 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#4f46e5">
-    <title>404 - Fichier introuvable</title>
+    <title data-i18n="404.title">404 - Fichier introuvable</title>
     <link rel="shortcut icon" href="img/favicon.png" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="/assets/i18n.css">
+    <script src="/assets/lang-public.js"></script>
+    <script src="/assets/i18n.js" defer></script>
     <style>
         html[data-theme="light"] body { background-color: #f3f4f6 !important; color: #111827 !important; }
         html[data-theme="dark"] body { background-color: #0f172a !important; color: #f8fafc !important; }
@@ -22,15 +25,17 @@
 </head>
 <body class="bg-white text-gray-900 transition-colors duration-200 dark:bg-gray-900 dark:text-gray-100">
 
-<button id="themeToggle" type="button" class="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-xl ring-1 ring-black/10 transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="Changer de thème" aria-pressed="false"></button>
+<div id="langSwitch" class="fixed bottom-4 left-4 z-50"></div>
+
+<button id="themeToggle" type="button" class="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-xl ring-1 ring-black/10 transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-pressed="false"></button>
 
 <main class="grid min-h-full place-items-center px-6 py-24 sm:py-32 lg:px-8">
     <div class="text-center">
         <p class="text-base font-semibold text-indigo-600 dark:text-indigo-400">404</p>
-        <h1 class="mt-4 text-3xl sm:text-5xl md:text-7xl font-semibold tracking-tight text-balance text-gray-900 dark:text-gray-100">Fichier introuvable !</h1>
-        <p class="mt-6 text-lg font-medium text-pretty text-gray-500 sm:text-xl/8 dark:text-gray-300">Le fichier demandé est introuvable. Vérifiez l'identifiant utilisé.</p>
+        <h1 class="mt-4 text-3xl sm:text-5xl md:text-7xl font-semibold tracking-tight text-balance text-gray-900 dark:text-gray-100" data-i18n="404.heading">Fichier introuvable !</h1>
+        <p class="mt-6 text-lg font-medium text-pretty text-gray-500 sm:text-xl/8 dark:text-gray-300" data-i18n="404.body">Le fichier demandé est introuvable. Vérifiez l'identifiant utilisé.</p>
         <div class="mt-10 flex items-center justify-center gap-x-6">
-            <a href="#" class="text-sm font-semibold text-gray-900 dark:text-gray-200">Si cela se trouve être une erreur, contactez Louison, ou Teano <span aria-hidden="true">&rarr;</span></a>
+            <a href="#" class="text-sm font-semibold text-gray-900 dark:text-gray-200"><span data-i18n="404.contact">Si cela se trouve être une erreur, contactez Louison, ou Teano</span> <span aria-hidden="true">&rarr;</span></a>
         </div>
     </div>
 </main>
@@ -84,6 +89,14 @@
 
     initTheme();
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+    document.getElementById('langSwitch').innerHTML = ftLangSwitcher();
+    ftApplyI18n();
+    document.addEventListener('ft:lang', function () {
+        const theme = document.documentElement.getAttribute('data-theme');
+        document.getElementById('themeToggle')
+            .setAttribute('aria-label', t(theme === 'dark' ? 'theme.toLight' : 'theme.toDark'));
+    });
 </script>
 </body>
 </html>

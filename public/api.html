@@ -7,6 +7,7 @@
     <title>API | FileTransfer</title>
     <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="/assets/i18n.css">
     <style>
         html[data-theme="light"] body { background-color: #f3f4f6 !important; color: #111827 !important; }
         html[data-theme="dark"]  body { background-color: #0f172a !important; color: #f8fafc !important; }
@@ -51,7 +52,13 @@
             <p class="text-base font-bold text-indigo-600 dark:text-indigo-400">FileTransfer</p>
             <p class="muted text-xs">Référence de l'API</p>
         </div>
-        <a href="/" class="rounded-md border px-3 py-2 text-sm transition hover:border-indigo-400">Retour au site</a>
+        <div class="flex items-center gap-3">
+            <div class="lang-switch" role="group" aria-label="Language">
+                <a href="?lang=fr" data-lang-link="fr">FR</a>
+                <a href="?lang=en" data-lang-link="en">EN</a>
+            </div>
+            <a href="/" class="rounded-md border px-3 py-2 text-sm transition hover:border-indigo-400">Retour au site</a>
+        </div>
     </div>
 </header>
 
@@ -374,6 +381,16 @@ curl -H "X-File-Password: secret" -O -J "https://votre-domaine/aB3xY9?download=t
         const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
         localStorage.setItem(THEME_KEY, next);
         applyTheme(next);
+    });
+
+    // La page est rendue par le serveur : la bascule navigue, et memorise le
+    // choix pour que le reste du site suive.
+    document.querySelectorAll('[data-lang-link]').forEach(function (a) {
+        var lang = a.getAttribute('data-lang-link');
+        a.classList.toggle('lang-active', document.documentElement.lang === lang);
+        a.addEventListener('click', function () {
+            try { localStorage.setItem('ft-lang', lang); } catch (e) {}
+        });
     });
 </script>
 </body>

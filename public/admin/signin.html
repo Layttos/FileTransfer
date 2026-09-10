@@ -4,32 +4,36 @@
   <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#4f46e5">
-  <title>Utilisateur - S'inscrire</title>
+  <title data-i18n="signin.title">Utilisateur - S'inscrire</title>
   <link rel="shortcut icon" href="../img/favicon.png" type="image/x-icon">
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet" href="/assets/i18n.css">
+  <script src="/assets/lang-admin.js"></script>
+  <script src="/assets/i18n.js" defer></script>
 </head>
+<div id="langSwitch" class="fixed bottom-4 left-4 z-50"></div>
 <body>
 <div class="flex items-center justify-center min-h-screen bg-gray-100 px-4">
   <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-2xl">
     <div class="text-center">
-      <p class="text-lg font-semibold text-indigo-600">File Transfer | Administration</p>
-      <h1 class="mt-4 text-5xl md:text-5xl font-bold text-gray-900">Création de compte</h1>
-      <span class="mt-6 text-2xl text-gray-600">Inscrivez-vous pour gérer le site. (Vérification manuelle)</span>
+      <p class="text-lg font-semibold text-indigo-600" data-i18n="signin.brand">File Transfer | Administration</p>
+      <h1 class="mt-4 text-5xl md:text-5xl font-bold text-gray-900" data-i18n="signin.heading">Création de compte</h1>
+      <span class="mt-6 text-2xl text-gray-600" data-i18n="signin.subtitle">Inscrivez-vous pour gérer le site. (Vérification manuelle)</span>
       <div class="mt-11">
         <form id="signinForm" class="flex flex-col items-center justify-center">
           <div class="flex space-x-4 w-full">
-            <input type="text" id="firstname" name="firstname" placeholder="Prénom*" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4">
-            <input type="text" id="lastname" name="lastname" placeholder="Nom*" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4">
+            <input type="text" id="firstname" name="firstname" placeholder="Prénom*" data-i18n-placeholder="signin.firstName" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4">
+            <input type="text" id="lastname" name="lastname" placeholder="Nom*" data-i18n-placeholder="signin.lastName" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4">
           </div>
-          <input type="text" id="inviteCode" name="inviteCode" placeholder="Code d'invitation*" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4">
-          <input type="text" id="username" name="username" placeholder="Nom d'utilisateur*" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4">
-          <input type="email" id="email" name="email" placeholder="Adresse email*" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4">
-          <input type="password" id="password" name="password" placeholder="Mot de passe*" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4">
+          <input type="text" id="inviteCode" name="inviteCode" placeholder="Code d'invitation*" data-i18n-placeholder="signin.invite" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4">
+          <input type="text" id="username" name="username" placeholder="Nom d'utilisateur*" data-i18n-placeholder="signin.username" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4">
+          <input type="email" id="email" name="email" placeholder="Adresse email*" data-i18n-placeholder="signin.email" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4">
+          <input type="password" id="password" name="password" placeholder="Mot de passe*" data-i18n-placeholder="signin.password" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4">
           <span id="connect-msg" class="text-red-500 text-sm mb-4"></span>
-          <button id="submit-btn" type="button" class="w-full rounded-md bg-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-md hover:cursor-pointer hover:bg-indigo-500 transition">Créer un compte</button>
+          <button id="submit-btn" type="button" class="w-full rounded-md bg-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-md hover:cursor-pointer hover:bg-indigo-500 transition" data-i18n="signin.submit">Créer un compte</button>
         </form>
       </div>
-      <a href="/admin/login" class="mt-6 text-sm text-indigo-500">J'ai déjà un compte</a>
+      <a href="/admin/login" class="mt-6 text-sm text-indigo-500" data-i18n="signin.haveAccount">J'ai déjà un compte</a>
     </div>
   </div>
 </div>
@@ -102,18 +106,21 @@
     .then(({ ok, data }) => {
       if (!ok) {
         connectMsg.innerHTML = "<span class='text-red-500'>" +
-          (data.error || 'La création du compte a échoué.') + "</span>";
+          (data.error || t('signin.failed')) + "</span>";
         return;
       }
       // Le serveur a ouvert la session : on entre directement dans le dashboard.
-      connectMsg.innerHTML = "<span class='text-green-500'>Compte créé, connexion en cours…</span>";
+      connectMsg.innerHTML = "<span class='text-green-500'>" + t('signin.created') + "</span>";
       setTimeout(() => { window.location.href = '/admin/dashboard'; }, 900);
     })
     .catch(error => {
       console.error(error);
-      connectMsg.textContent = 'Impossible de contacter le serveur.';
+      connectMsg.textContent = t('signin.unreachable');
     });
   };
+
+  document.getElementById('langSwitch').innerHTML = ftLangSwitcher();
+  ftApplyI18n();
 </script>
 </body>
 </html>

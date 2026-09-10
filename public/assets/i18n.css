@@ -1,0 +1,27 @@
+/* Bascule de langue, accordee aux deux themes du site. */
+.lang-switch {
+    display: inline-flex;
+    overflow: hidden;
+    border-radius: 9999px;
+    border: 1px solid rgb(0 0 0 / 0.12);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1;
+}
+html[data-theme="dark"] .lang-switch { border-color: rgb(255 255 255 / 0.18); }
+
+.lang-switch button {
+    padding: 0.45rem 0.6rem;
+    background: transparent;
+    color: inherit;
+    opacity: 0.55;
+    transition: background-color 0.15s, opacity 0.15s;
+    cursor: pointer;
+}
+.lang-switch button:hover { opacity: 0.85; }
+.lang-switch button.lang-active {
+    background-color: #4f46e5;
+    color: #ffffff;
+    opacity: 1;
+}
+html[data-theme="dark"] .lang-switch button.lang-active { background-color: #6366f1; }

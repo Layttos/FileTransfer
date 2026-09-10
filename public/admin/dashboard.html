@@ -4,9 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#4f46e5">
-    <title>Tableau de bord | Administration</title>
+    <title data-i18n="dash.title">Tableau de bord | Administration</title>
     <link rel="shortcut icon" href="../img/favicon.png" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="/assets/i18n.css">
+    <script src="/assets/lang-admin.js"></script>
+    <script src="/assets/i18n.js" defer></script>
 
     <!-- Editeur de texte. Charge depuis un CDN comme Tailwind ; si le
          chargement echoue, l'interface bascule sur un simple textarea. -->
@@ -191,7 +194,9 @@
     </symbol>
 </svg>
 
-<button id="themeToggle" type="button" class="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full shadow-xl ring-1 ring-black/10 transition hover:scale-105 md:bottom-4" aria-label="Changer de thème"></button>
+<div id="langSwitch" class="fixed bottom-20 left-4 z-40 md:bottom-4"></div>
+
+<button id="themeToggle" type="button" class="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full shadow-xl ring-1 ring-black/10 transition hover:scale-105 md:bottom-4" data-i18n-aria="theme.toDark"></button>
 
 <div id="toast" class="fixed left-1/2 top-4 z-50 hidden w-[92%] max-w-sm -translate-x-1/2 rounded-md px-4 py-3 text-sm shadow-lg md:left-auto md:right-4 md:translate-x-0"></div>
 
@@ -200,10 +205,10 @@
     <!-- En-tête mobile -->
     <header class="side sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 md:hidden">
         <div class="min-w-0">
-            <p id="m-title" class="strong truncate text-base font-bold">Vue d'ensemble</p>
+            <p id="m-title" class="strong truncate text-base font-bold" data-i18n="nav.overview.title">Vue d'ensemble</p>
             <p id="m-user" class="muted truncate text-xs"></p>
         </div>
-        <button id="logout-top" class="btn flex items-center gap-1.5 rounded-md border border-red-300 px-3 py-2 text-sm text-red-600 dark:border-red-500/40 dark:text-red-400" aria-label="Se déconnecter">
+        <button id="logout-top" class="btn flex items-center gap-1.5 rounded-md border border-red-300 px-3 py-2 text-sm text-red-600 dark:border-red-500/40 dark:text-red-400" data-i18n-aria="dash.logout">
             <svg class="icon"><use href="#i-logout"/></svg>
         </button>
     </header>
@@ -211,14 +216,14 @@
     <!-- Barre latérale (desktop) -->
     <aside class="side hidden w-64 shrink-0 border-r md:flex md:flex-col">
         <div class="p-5">
-            <p class="text-lg font-bold text-indigo-600 dark:text-indigo-400">FileTransfer</p>
-            <p class="muted text-xs">Administration</p>
+            <p class="text-lg font-bold text-indigo-600 dark:text-indigo-400" data-i18n="dash.brand">FileTransfer</p>
+            <p class="muted text-xs" data-i18n="dash.brandSub">Administration</p>
         </div>
         <nav id="nav-desktop" class="flex flex-col gap-1 px-3"></nav>
         <div class="mt-auto p-3">
             <p id="side-user" class="muted truncate px-3 text-xs"></p>
             <button id="logout" class="btn mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-red-300 px-3 py-2 text-sm text-red-600 transition hover:bg-red-50 dark:border-red-500/40 dark:text-red-400 dark:hover:bg-red-500/10">
-                <svg class="icon"><use href="#i-logout"/></svg> Se déconnecter
+                <svg class="icon"><use href="#i-logout"/></svg> <span data-i18n="dash.logout">Se déconnecter</span>
             </button>
         </div>
     </aside>
@@ -228,8 +233,8 @@
 
     <main class="min-w-0 flex-1 p-4 md:p-8">
         <header class="mb-5 hidden md:block">
-            <h1 id="page-title" class="strong text-2xl font-bold">Vue d'ensemble</h1>
-            <p id="page-sub" class="muted text-sm">Résumé de l'instance</p>
+            <h1 id="page-title" class="strong text-2xl font-bold" data-i18n="nav.overview.title">Vue d'ensemble</h1>
+            <p id="page-sub" class="muted text-sm" data-i18n="nav.overview.sub">Résumé de l'instance</p>
         </header>
 
         <!-- Vue d'ensemble -->
@@ -242,18 +247,18 @@
         <section id="panel-files" class="panel space-y-4">
             <div id="storage-card-files" class="card rounded-lg border p-4 shadow-sm"></div>
             <div class="card rounded-lg border p-3 shadow-sm md:p-4">
-                <label for="files-search" class="sr-only">Rechercher un fichier</label>
+                <label for="files-search" class="sr-only" data-i18n="files.searchLabel">Rechercher un fichier</label>
                 <input id="files-search" type="search" inputmode="search"
-                       placeholder="Rechercher : nom, *.zip, photo?.jpg, identifiant ou IP…"
+                       placeholder="Rechercher : nom, *.zip, photo?.jpg, identifiant ou IP…" data-i18n-placeholder="files.searchPlaceholder"
                        class="w-full rounded-md border px-3 py-2.5 text-sm">
                 <p id="files-count" class="muted mt-2 text-xs"></p>
-                <p class="muted mt-1 text-[11px]">Jokers acceptés : <code>*</code> remplace n\'importe quelle suite de caractères, <code>?</code> un seul.</p>
+                <p class="muted mt-1 text-[11px]" data-i18n-html="files.wildcards"></p>
             </div>
             <div id="files-list" class="space-y-2"></div>
             <div class="flex items-center justify-between gap-2">
-                <button id="files-prev" class="btn rounded-md border px-4 py-2 text-sm disabled:opacity-40">Précédent</button>
+                <button id="files-prev" class="btn rounded-md border px-4 py-2 text-sm disabled:opacity-40" data-i18n="dash.prev">Précédent</button>
                 <span id="files-page" class="muted text-sm"></span>
-                <button id="files-next" class="btn rounded-md border px-4 py-2 text-sm disabled:opacity-40">Suivant</button>
+                <button id="files-next" class="btn rounded-md border px-4 py-2 text-sm disabled:opacity-40" data-i18n="dash.next">Suivant</button>
             </div>
         </section>
 
@@ -261,18 +266,18 @@
         <section id="panel-cloud" class="panel space-y-4">
             <div class="card rounded-lg border p-4 shadow-sm">
                 <div class="mb-3 flex items-center gap-2">
-                    <button id="cloud-up" class="btn flex items-center justify-center rounded-md border px-2.5 py-2 disabled:opacity-40" aria-label="Dossier parent">
+                    <button id="cloud-up" class="btn flex items-center justify-center rounded-md border px-2.5 py-2 disabled:opacity-40" data-i18n-aria="cloud.parent">
                         <svg class="icon"><use href="#i-back"/></svg>
                     </button>
                     <nav id="cloud-breadcrumb" class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-sm"></nav>
                 </div>
                 <div class="grid gap-2 sm:grid-cols-2">
                     <label class="btn flex cursor-pointer items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">
-                        <svg class="icon"><use href="#i-upload"/></svg> Envoyer un fichier
+                        <svg class="icon"><use href="#i-upload"/></svg> <span data-i18n="cloud.upload">Envoyer un fichier</span>
                         <input id="cloud-file" type="file" class="hidden">
                     </label>
                     <button id="cloud-mkdir" class="btn flex items-center justify-center gap-2 rounded-md border px-4 py-2.5 text-sm font-semibold transition hover:border-indigo-400">
-                        <svg class="icon"><use href="#i-folder"/></svg> Nouveau dossier
+                        <svg class="icon"><use href="#i-folder"/></svg> <span data-i18n="cloud.newFolder">Nouveau dossier</span>
                     </button>
                 </div>
                 <div id="cloud-progress" class="mt-3 hidden">
@@ -281,7 +286,7 @@
                 </div>
             </div>
             <div id="cloud-grid" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"></div>
-            <p id="cloud-empty" class="muted hidden py-8 text-center text-sm">Ce dossier est vide.</p>
+            <p id="cloud-empty" class="muted hidden py-8 text-center text-sm" data-i18n="cloud.empty">Ce dossier est vide.</p>
         </section>
 
         <!-- Journal -->
@@ -289,71 +294,71 @@
             <div class="card rounded-lg border p-4 shadow-sm">
                 <div class="grid gap-2 sm:grid-cols-3">
                     <select id="log-category" class="rounded-md border px-3 py-2.5 text-sm">
-                        <option value="all">Toutes les catégories</option>
-                        <option value="auth">Authentification</option>
-                        <option value="upload">Dépôts</option>
-                        <option value="download">Téléchargements</option>
-                        <option value="file">Fichiers publics</option>
-                        <option value="personal">Cloud personnel</option>
-                        <option value="admin">Administrateurs</option>
-                        <option value="system">Système</option>
+                        <option value="all" data-i18n="log.allCategories">Toutes les catégories</option>
+                        <option value="auth" data-i18n="cat.auth">Authentification</option>
+                        <option value="upload" data-i18n="cat.upload">Dépôts</option>
+                        <option value="download" data-i18n="cat.download">Téléchargements</option>
+                        <option value="file" data-i18n="cat.file">Fichiers publics</option>
+                        <option value="personal" data-i18n="cat.personal">Cloud personnel</option>
+                        <option value="admin" data-i18n="cat.admin">Administrateurs</option>
+                        <option value="system" data-i18n="cat.system">Système</option>
                     </select>
                     <select id="log-level" class="rounded-md border px-3 py-2.5 text-sm">
-                        <option value="all">Tous les niveaux</option>
-                        <option value="info">Information</option>
-                        <option value="warn">Notable</option>
-                        <option value="error">Erreur</option>
+                        <option value="all" data-i18n="log.allLevels">Tous les niveaux</option>
+                        <option value="info" data-i18n="log.lvInfo">Information</option>
+                        <option value="warn" data-i18n="log.lvWarn">Notable</option>
+                        <option value="error" data-i18n="log.lvError">Erreur</option>
                     </select>
-                    <input id="log-search" type="search" placeholder="Rechercher (IP, fichier, compte…)" class="rounded-md border px-3 py-2.5 text-sm">
+                    <input id="log-search" type="search" placeholder="Rechercher (IP, fichier, compte…)" data-i18n-placeholder="log.searchPlaceholder" class="rounded-md border px-3 py-2.5 text-sm">
                 </div>
                 <div id="log-stats" class="muted mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs"></div>
             </div>
             <div id="log-list" class="space-y-2"></div>
             <div class="flex items-center justify-between gap-2">
-                <button id="log-prev" class="btn rounded-md border px-4 py-2 text-sm disabled:opacity-40">Précédent</button>
+                <button id="log-prev" class="btn rounded-md border px-4 py-2 text-sm disabled:opacity-40" data-i18n="dash.prev">Précédent</button>
                 <span id="log-page" class="muted text-sm"></span>
-                <button id="log-next" class="btn rounded-md border px-4 py-2 text-sm disabled:opacity-40">Suivant</button>
+                <button id="log-next" class="btn rounded-md border px-4 py-2 text-sm disabled:opacity-40" data-i18n="dash.next">Suivant</button>
             </div>
         </section>
 
         <!-- Sécurité -->
         <section id="panel-security" class="panel space-y-4">
             <div class="card rounded-lg border p-4 shadow-sm md:p-5">
-                <h2 class="strong mb-1 flex items-center gap-2 text-lg font-semibold"><svg class="icon"><use href="#i-key"/></svg> Passkeys</h2>
-                <p class="muted mb-4 text-sm">Une passkey remplace le mot de passe par l'empreinte, le visage ou le code de votre appareil.</p>
+                <h2 class="strong mb-1 flex items-center gap-2 text-lg font-semibold"><svg class="icon"><use href="#i-key"/></svg> <span data-i18n="sec.passkeys">Passkeys</span></h2>
+                <p class="muted mb-4 text-sm" data-i18n="sec.passkeysHint">Une passkey remplace le mot de passe par l'empreinte, le visage ou le code de votre appareil.</p>
                 <div class="mb-4 grid gap-2 sm:grid-cols-[1fr_auto]">
-                    <input id="passkey-name" type="text" placeholder="Nom de l'appareil (ex : iPhone)" class="rounded-md border px-3 py-2.5 text-sm">
-                    <button id="passkey-add" class="btn rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">Ajouter</button>
+                    <input id="passkey-name" type="text" placeholder="Nom de l'appareil (ex : iPhone)" data-i18n-placeholder="sec.passkeyName" class="rounded-md border px-3 py-2.5 text-sm">
+                    <button id="passkey-add" class="btn rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700" data-i18n="sec.add">Ajouter</button>
                 </div>
                 <div id="passkeys-list" class="space-y-2"></div>
                 <p id="passkey-unsupported" class="mt-3 hidden text-sm text-amber-600 dark:text-amber-400"></p>
             </div>
 
             <div class="card rounded-lg border p-4 shadow-sm md:p-5">
-                <h2 class="strong mb-1 text-lg font-semibold">Méthode de connexion</h2>
-                <p class="muted mb-3 text-sm">Ce qui est exigé pour ouvrir une session sur votre compte.</p>
+                <h2 class="strong mb-1 text-lg font-semibold" data-i18n="sec.method">Méthode de connexion</h2>
+                <p class="muted mb-3 text-sm" data-i18n="sec.methodHint">Ce qui est exigé pour ouvrir une session sur votre compte.</p>
                 <select id="auth-policy" class="w-full rounded-md border px-3 py-2.5 text-sm">
-                    <option value="password">Mot de passe seul</option>
-                    <option value="passkey_or_password">Passkey ou mot de passe</option>
-                    <option value="password_and_passkey">Mot de passe puis passkey (deux facteurs)</option>
+                    <option value="password" data-i18n="sec.mPassword">Mot de passe seul</option>
+                    <option value="passkey_or_password" data-i18n="sec.mEither">Passkey ou mot de passe</option>
+                    <option value="password_and_passkey" data-i18n="sec.mBoth">Mot de passe puis passkey (deux facteurs)</option>
                 </select>
-                <p class="muted mt-2 text-xs">Les options avec passkey demandent d'en avoir enregistré au moins une.</p>
+                <p class="muted mt-2 text-xs" data-i18n="sec.methodNote">Les options avec passkey demandent d'en avoir enregistré au moins une.</p>
             </div>
 
             <div class="card rounded-lg border p-4 shadow-sm md:p-5">
-                <h2 class="strong mb-1 text-lg font-semibold">Mot de passe</h2>
-                <p class="muted mb-3 text-sm">Le changer déconnecte tous vos autres appareils.</p>
+                <h2 class="strong mb-1 text-lg font-semibold" data-i18n="sec.password">Mot de passe</h2>
+                <p class="muted mb-3 text-sm" data-i18n="sec.passwordHint">Le changer déconnecte tous vos autres appareils.</p>
                 <div class="grid gap-2 md:grid-cols-3">
-                    <input id="pwd-current" type="password" autocomplete="current-password" placeholder="Mot de passe actuel" class="rounded-md border px-3 py-2.5 text-sm">
-                    <input id="pwd-new" type="password" autocomplete="new-password" placeholder="Nouveau (8 car. min.)" class="rounded-md border px-3 py-2.5 text-sm">
-                    <button id="pwd-save" class="btn rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">Changer</button>
+                    <input id="pwd-current" type="password" autocomplete="current-password" placeholder="Mot de passe actuel" data-i18n-placeholder="sec.currentPassword" class="rounded-md border px-3 py-2.5 text-sm">
+                    <input id="pwd-new" type="password" autocomplete="new-password" placeholder="Nouveau (8 car. min.)" data-i18n-placeholder="sec.newPassword" class="rounded-md border px-3 py-2.5 text-sm">
+                    <button id="pwd-save" class="btn rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700" data-i18n="sec.change">Changer</button>
                 </div>
             </div>
 
             <div class="card rounded-lg border p-4 shadow-sm md:p-5">
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <h2 class="strong text-lg font-semibold">Sessions actives</h2>
-                    <button id="sessions-revoke-others" class="btn rounded-md border border-red-300 px-3 py-2 text-sm text-red-600 dark:border-red-500/40 dark:text-red-400">Déconnecter les autres</button>
+                    <h2 class="strong text-lg font-semibold" data-i18n="sec.sessions">Sessions actives</h2>
+                    <button id="sessions-revoke-others" class="btn rounded-md border border-red-300 px-3 py-2 text-sm text-red-600 dark:border-red-500/40 dark:text-red-400" data-i18n="sec.revokeOthers">Déconnecter les autres</button>
                 </div>
                 <div id="sessions-list" class="space-y-2"></div>
             </div>
@@ -365,10 +370,10 @@
             <div class="card rounded-lg border p-4 shadow-sm md:p-5">
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div>
-                        <h2 class="strong text-lg font-semibold">Codes d'invitation</h2>
-                        <p class="muted text-sm">Un code crée un compte administrateur, une seule fois.</p>
+                        <h2 class="strong text-lg font-semibold" data-i18n="adm.invites">Codes d'invitation</h2>
+                        <p class="muted text-sm" data-i18n="adm.invitesHint">Un code crée un compte administrateur, une seule fois.</p>
                     </div>
-                    <button id="invite-create" class="btn rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">Générer</button>
+                    <button id="invite-create" class="btn rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700" data-i18n="adm.generate">Générer</button>
                 </div>
                 <div id="invites-list" class="space-y-2"></div>
             </div>
@@ -385,9 +390,9 @@
             <p id="viewer-name" class="strong ellipsis text-sm font-medium"></p>
             <p id="viewer-meta" class="muted text-[11px]"></p>
         </div>
-        <button id="viewer-save" class="btn hidden rounded-md bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700">Enregistrer</button>
-        <a id="viewer-dl" class="btn flex items-center rounded-md border px-3 py-2 text-xs" download>Télécharger</a>
-        <button id="viewer-close" class="btn flex items-center rounded-md border px-3 py-2 text-xs" aria-label="Fermer">Fermer</button>
+        <button id="viewer-save" class="btn hidden rounded-md bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700" data-i18n="view.save">Enregistrer</button>
+        <a id="viewer-dl" class="btn flex items-center rounded-md border px-3 py-2 text-xs" download data-i18n="act.download">Télécharger</a>
+        <button id="viewer-close" class="btn flex items-center rounded-md border px-3 py-2 text-xs" data-i18n-aria="dash.close" data-i18n="dash.close">Fermer</button>
     </header>
     <div id="viewer-body" class="flex min-h-0 flex-1 items-center justify-center overflow-auto"></div>
 </div>
@@ -395,12 +400,12 @@
 <!-- Résultat d'un partage -->
 <div id="share-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
     <div class="card w-full max-w-md rounded-lg border p-5 shadow-2xl">
-        <h2 id="share-title" class="strong mb-1 text-lg font-semibold">Fichier partagé</h2>
+        <h2 id="share-title" class="strong mb-1 text-lg font-semibold" data-i18n="share.heading">Fichier partagé</h2>
         <p id="share-sub" class="muted mb-4 text-sm"></p>
         <input id="share-url" type="text" readonly class="w-full rounded-md border px-3 py-2.5 text-sm">
         <div class="mt-4 flex flex-wrap gap-2">
-            <button id="share-copy" class="btn flex-1 rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">Copier le lien</button>
-            <button id="share-close" class="btn rounded-md border px-4 py-2.5 text-sm">Fermer</button>
+            <button id="share-copy" class="btn flex-1 rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700" data-i18n="share.copy">Copier le lien</button>
+            <button id="share-close" class="btn rounded-md border px-4 py-2.5 text-sm" data-i18n="dash.close">Fermer</button>
         </div>
     </div>
 </div>
@@ -485,13 +490,14 @@ async function api(action, extra, query) {
 }
 
 /* ---------- Navigation ---------- */
+// Les libellés sont des clés : la navigation se redessine au changement de langue.
 const TABS = [
-    { id: 'overview', icon: 'home',    label: 'Résumé',   title: "Vue d'ensemble", sub: "Résumé de l'instance" },
-    { id: 'files',    icon: 'files',   label: 'Fichiers', title: 'Fichiers publics', sub: 'Les transferts déposés sur le site' },
-    { id: 'cloud',    icon: 'cloud',   label: 'Cloud',    title: 'Mon cloud', sub: 'Votre espace personnel, visible de vous seul' },
-    { id: 'journal',  icon: 'journal', label: 'Journal',  title: 'Journal', sub: "Tout ce qui se passe sur le site" },
-    { id: 'security', icon: 'shield',  label: 'Sécurité', title: 'Sécurité', sub: 'Passkeys, mot de passe et sessions' },
-    { id: 'admins',   icon: 'users',   label: 'Admins',   title: 'Administrateurs', sub: "Comptes et codes d'invitation" }
+    { id: 'overview', icon: 'home' },
+    { id: 'files',    icon: 'files' },
+    { id: 'cloud',    icon: 'cloud' },
+    { id: 'journal',  icon: 'journal' },
+    { id: 'security', icon: 'shield' },
+    { id: 'admins',   icon: 'users' }
 ];
 const LOADERS = {
     overview: loadOverview,
@@ -502,14 +508,20 @@ const LOADERS = {
     admins: loadAdmins
 };
 
-document.getElementById('nav-desktop').innerHTML = TABS.map(function (t) {
-    return '<button data-tab="' + t.id + '" class="tab flex items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm transition hover:bg-black/5 dark:hover:bg-white/5">' +
-        icon(t.icon) + '<span>' + t.title + '</span></button>';
-}).join('');
-document.getElementById('nav-mobile').innerHTML = TABS.map(function (t) {
-    return '<button data-tab="' + t.id + '" class="tab flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] transition">' +
-        icon(t.icon) + '<span>' + t.label + '</span></button>';
-}).join('');
+function renderNav() {
+    document.getElementById('nav-desktop').innerHTML = TABS.map(function (x) {
+        return '<button data-tab="' + x.id + '" class="tab flex items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm transition hover:bg-black/5 dark:hover:bg-white/5">' +
+            icon(x.icon) + '<span>' + esc(t('nav.' + x.id + '.title')) + '</span></button>';
+    }).join('');
+    document.getElementById('nav-mobile').innerHTML = TABS.map(function (x) {
+        return '<button data-tab="' + x.id + '" class="tab flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] transition">' +
+            icon(x.icon) + '<span>' + esc(t('nav.' + x.id)) + '</span></button>';
+    }).join('');
+    document.querySelectorAll('.tab').forEach(function (b) {
+        b.addEventListener('click', function () { selectTab(b.dataset.tab); });
+    });
+}
+renderNav();
 
 function selectTab(name) {
     document.querySelectorAll('.tab').forEach(function (b) {
@@ -518,17 +530,14 @@ function selectTab(name) {
     document.querySelectorAll('.panel').forEach(function (p) {
         p.classList.toggle('active', p.id === 'panel-' + name);
     });
-    const t = TABS.find(function (x) { return x.id === name; });
-    document.getElementById('page-title').textContent = t.title;
-    document.getElementById('page-sub').textContent = t.sub;
-    document.getElementById('m-title').textContent = t.title;
+    document.getElementById('page-title').textContent = t('nav.' + name + '.title');
+    document.getElementById('page-sub').textContent = t('nav.' + name + '.sub');
+    document.getElementById('m-title').textContent = t('nav.' + name + '.title');
     location.hash = name;
     window.scrollTo(0, 0);
     LOADERS[name]();
 }
-document.querySelectorAll('.tab').forEach(function (b) {
-    b.addEventListener('click', function () { selectTab(b.dataset.tab); });
-});
+
 
 /* ---------- Déconnexion ---------- */
 async function logout() {
@@ -542,24 +551,24 @@ document.getElementById('logout-top').addEventListener('click', logout);
 function storageBar(s) {
     const pct = s.max > 0 ? Math.min(100, s.used / s.max * 100) : 0;
     const color = pct > 90 ? 'bg-red-600' : pct > 75 ? 'bg-amber-500' : 'bg-indigo-600';
-    const origine = s.source === 'quota' ? 'quota configuré (STORAGE_MAX)' : 'capacité du disque';
+    const origine = t(s.source === 'quota' ? 'st.srcQuota' : 'st.srcDisk');
 
     return '<div class="mb-2 flex flex-wrap items-baseline justify-between gap-x-3">' +
-            '<p class="strong text-sm font-semibold">Stockage utilisé</p>' +
-            '<p class="muted text-xs">' + (s.max > 0 ? Math.round(pct) + ' % de ' + humanSize(s.max) : 'plafond inconnu') + '</p>' +
+            '<p class="strong text-sm font-semibold">' + t('st.used') + '</p>' +
+            '<p class="muted text-xs">' + (s.max > 0 ? t('st.ofTotal', { pct: Math.round(pct), max: humanSize(s.max) }) : t('st.noCap')) + '</p>' +
         '</div>' +
         '<div class="track h-3 w-full overflow-hidden rounded-full">' +
             '<div class="h-3 rounded-full ' + color + ' transition-all" style="width:' + pct.toFixed(1) + '%"></div>' +
         '</div>' +
         '<div class="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">' +
             '<p class="strong text-lg font-bold">' + humanSize(s.used) + '</p>' +
-            '<p class="muted text-xs">sur ' + (s.max > 0 ? humanSize(s.max) : '—') + '</p>' +
+            '<p class="muted text-xs">' + t('st.on', { max: s.max > 0 ? humanSize(s.max) : '—' }) + '</p>' +
         '</div>' +
         '<div class="muted mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">' +
-            '<span>Transferts publics : ' + humanSize(s.public_used) + '</span>' +
-            '<span>Clouds personnels : ' + humanSize(s.person_used) + '</span>' +
-            (s.disk_free > 0 ? '<span>Libre sur le disque : ' + humanSize(s.disk_free) + '</span>' : '') +
-            '<span>Plafond d\'après : ' + origine + '</span>' +
+            '<span>' + t('st.public', { size: humanSize(s.public_used) }) + '</span>' +
+            '<span>' + t('st.personal', { size: humanSize(s.person_used) }) + '</span>' +
+            (s.disk_free > 0 ? '<span>' + t('st.free', { size: humanSize(s.disk_free) }) + '</span>' : '') +
+            '<span>' + t('st.source', { source: origine }) + '</span>' +
         '</div>';
 }
 async function loadStorage() {
@@ -577,12 +586,12 @@ async function loadOverview() {
     try {
         const o = await api('overview');
         const cards = [
-            ['Fichiers publics', o.files, humanSize(o.total_size)],
-            ['Protégés par mot de passe', o.protected_files, o.files ? Math.round(o.protected_files / o.files * 100) + ' % du total' : '—'],
-            ['Fichiers personnels', o.personal_files, humanSize(o.personal_size)],
-            ['Administrateurs', o.admins, o.open_invites + ' invitation(s) ouverte(s)'],
-            ['Sessions actives', o.active_sessions, 'tous comptes confondus'],
-            ['Passkeys', o.passkeys, 'enregistrées']
+            [t('ov.files'), o.files, humanSize(o.total_size)],
+            [t('ov.protected'), o.protected_files, o.files ? t('ov.pctTotal', { pct: Math.round(o.protected_files / o.files * 100) }) : '—'],
+            [t('ov.personal'), o.personal_files, humanSize(o.personal_size)],
+            [t('ov.admins'), o.admins, t('ov.invites', { n: o.open_invites })],
+            [t('ov.sessions'), o.active_sessions, t('ov.allAccounts')],
+            [t('ov.passkeys'), o.passkeys, t('ov.registered')]
         ];
         document.getElementById('stats').innerHTML = cards.map(function (c) {
             return '<div class="card rounded-lg border p-3 shadow-sm md:p-4">' +
@@ -615,13 +624,13 @@ async function loadFiles(page) {
         const total = data.total || 0;
 
         document.getElementById('files-count').textContent = term
-            ? (total + ' résultat(s) pour « ' + term + ' »')
-            : (total + ' fichier(s) au total');
+            ? t('files.results', { n: total, term: term })
+            : t('files.count', { n: total });
 
         const box = document.getElementById('files-list');
         if (!list.length) {
             box.innerHTML = '<p class="muted py-8 text-center text-sm">' +
-                (term ? 'Aucun fichier ne correspond à cette recherche' : 'Aucun fichier') + '</p>';
+                t(term ? 'files.noMatch' : 'files.none') + '</p>';
         } else {
             box.innerHTML = list.map(function (f) {
                 return '<div class="card rounded-lg border p-3 shadow-sm">' +
@@ -629,22 +638,22 @@ async function loadFiles(page) {
                         '<span class="text-indigo-600 dark:text-indigo-400">' + icon(iconForFile(f.file_name), 'icon-lg') + '</span>' +
                         '<div class="min-w-0 flex-1">' +
                             '<p class="strong ellipsis text-sm font-medium">' + esc(f.file_name) +
-                                (f.has_passwd ? ' <span class="ml-1 inline-block align-middle text-amber-600 dark:text-amber-400" title="Protégé par mot de passe">' + icon('lock', 'icon inline h-4 w-4') + '</span>' : '') +
+                                (f.has_passwd ? ' <span class="ml-1 inline-block align-middle text-amber-600 dark:text-amber-400" title="' + t('files.protected') + '">' + icon('lock', 'icon inline h-4 w-4') + '</span>' : '') +
                             '</p>' +
                             '<p class="muted mt-0.5 text-xs"><code>' + esc(f.id) + '</code> · ' + humanSize(f.file_size) + '</p>' +
                             '<p class="muted text-xs">' + humanDate(f.date) + ' · ' + esc(f.ip_addr) + '</p>' +
                         '</div>' +
                     '</div>' +
                     '<div class="mt-3 flex flex-wrap gap-2">' +
-                        '<a href="/admin/download?id=' + encodeURIComponent(f.id) + '" class="btn flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs transition hover:border-indigo-400">' + icon('download') + '<span class="hidden sm:inline">Télécharger</span></a>' +
-                        actionBtn('rename', f.id, 'edit', 'Renommer') +
-                        actionBtn('changeid', f.id, 'tag', "Changer l'ID") +
-                        actionBtn('delete', f.id, 'trash', 'Supprimer', true) +
+                        '<a href="/admin/download?id=' + encodeURIComponent(f.id) + '" class="btn flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs transition hover:border-indigo-400">' + icon('download') + '<span class="hidden sm:inline">' + t('act.download') + '</span></a>' +
+                        actionBtn('rename', f.id, 'edit', t('act.rename')) +
+                        actionBtn('changeid', f.id, 'tag', t('act.changeId')) +
+                        actionBtn('delete', f.id, 'trash', t('act.delete'), true) +
                     '</div></div>';
             }).join('');
         }
         const pages = Math.max(1, Math.ceil(total / PER_PAGE));
-        document.getElementById('files-page').textContent = 'Page ' + filesPage + ' / ' + pages;
+        document.getElementById('files-page').textContent = t('files.page', { page: filesPage, pages: pages });
         document.getElementById('files-prev').disabled = filesPage === 1;
         document.getElementById('files-next').disabled = filesPage >= pages;
     } catch (e) { toast(e.message, true); }
@@ -665,19 +674,19 @@ document.getElementById('files-list').addEventListener('click', async function (
     const id = btn.dataset.id;
     try {
         if (btn.dataset.act === 'delete') {
-            if (!confirm('Supprimer définitivement le fichier ' + id + ' ?')) return;
+            if (!confirm(t('files.confirmDelete', { id: id }))) return;
             await api('delete', { fileID: id });
-            toast('Fichier supprimé');
+            toast(t('files.deleted'));
         } else if (btn.dataset.act === 'rename') {
-            const name = prompt('Nouveau nom du fichier :');
+            const name = prompt(t('files.promptRename'));
             if (!name) return;
             await api('rename', { fileID: id, newFileName: name });
-            toast('Fichier renommé');
+            toast(t('files.renamed'));
         } else if (btn.dataset.act === 'changeid') {
-            const nid = prompt("Nouvel identifiant (6 caractères) :");
+            const nid = prompt(t('files.promptId'));
             if (!nid) return;
             await api('change_id', { fileID: id, newFileID: nid });
-            toast('Identifiant changé');
+            toast(t('files.idChanged'));
         }
         loadFiles(filesPage);
     } catch (e) { toast(e.message, true); }
@@ -726,10 +735,10 @@ async function loadCloud(folder) {
                     '<span class="muted text-[11px]">' + humanSize(f.file_size) + '</span>' +
                 '</div>' +
                 '<div class="mt-3 grid grid-cols-4 gap-1">' +
-                    '<a href="/admin/personal/download?id=' + encodeURIComponent(f.id) + '" title="Télécharger" aria-label="Télécharger" class="btn flex items-center justify-center rounded border py-2 hover:border-indigo-400">' + icon('download', 'icon h-4 w-4') + '</a>' +
-                    '<button data-act="prename" data-id="' + esc(f.id) + '" title="Renommer" aria-label="Renommer" class="btn flex items-center justify-center rounded border py-2 hover:border-indigo-400">' + icon('edit', 'icon h-4 w-4') + '</button>' +
-                    '<button data-act="pmove" data-id="' + esc(f.id) + '" title="Déplacer" aria-label="Déplacer" class="btn flex items-center justify-center rounded border py-2 hover:border-indigo-400">' + icon('move', 'icon h-4 w-4') + '</button>' +
-                    '<button data-act="pdelete" data-id="' + esc(f.id) + '" title="Supprimer" aria-label="Supprimer" class="btn flex items-center justify-center rounded border border-red-300 py-2 text-red-600 dark:border-red-500/40 dark:text-red-400">' + icon('trash', 'icon h-4 w-4') + '</button>' +
+                    '<a href="/admin/personal/download?id=' + encodeURIComponent(f.id) + '" title="' + t('act.download') + '" aria-label="' + t('act.download') + '" class="btn flex items-center justify-center rounded border py-2 hover:border-indigo-400">' + icon('download', 'icon h-4 w-4') + '</a>' +
+                    '<button data-act="prename" data-id="' + esc(f.id) + '" title="Renommer" aria-label="' + t('act.rename') + '" class="btn flex items-center justify-center rounded border py-2 hover:border-indigo-400">' + icon('edit', 'icon h-4 w-4') + '</button>' +
+                    '<button data-act="pmove" data-id="' + esc(f.id) + '" title="' + t('menu.move') + '" aria-label="' + t('menu.move') + '" class="btn flex items-center justify-center rounded border py-2 hover:border-indigo-400">' + icon('move', 'icon h-4 w-4') + '</button>' +
+                    '<button data-act="pdelete" data-id="' + esc(f.id) + '" title="Supprimer" aria-label="' + t('act.delete') + '" class="btn flex items-center justify-center rounded border border-red-300 py-2 text-red-600 dark:border-red-500/40 dark:text-red-400">' + icon('trash', 'icon h-4 w-4') + '</button>' +
                 '</div></div>';
         });
 
@@ -773,19 +782,19 @@ document.getElementById('cloud-grid').addEventListener('click', async function (
     const id = btn.dataset.id;
     try {
         if (btn.dataset.act === 'pdelete') {
-            if (!confirm('Supprimer ce fichier de votre cloud ?')) return;
+            if (!confirm(t('cloud.confirmDeleteCloud'))) return;
             await api('personal_delete', { fileID: id });
-            toast('Fichier supprimé');
+            toast(t('cloud.deleted'));
         } else if (btn.dataset.act === 'prename') {
-            const name = prompt('Nouveau nom :');
+            const name = prompt(t('cloud.promptRename'));
             if (!name) return;
             await api('personal_rename', { fileID: id, newFileName: name });
-            toast('Fichier renommé');
+            toast(t('cloud.renamed'));
         } else if (btn.dataset.act === 'pmove') {
-            const dest = prompt('Déplacer vers quel dossier ?', currentFolder);
+            const dest = prompt(t('cloud.promptMove'), currentFolder);
             if (dest === null) return;
             await api('personal_move', { fileID: id, folder: dest });
-            toast('Fichier déplacé');
+            toast(t('cloud.moved'));
         }
         loadCloud(currentFolder);
     } catch (e) { toast(e.message, true); }
@@ -801,7 +810,7 @@ document.getElementById('cloud-file').addEventListener('change', function () {
     const text = document.getElementById('cloud-progress-text');
     wrap.classList.remove('hidden');
     bar.style.width = '0%';
-    text.textContent = 'Envoi de ' + file.name + '…';
+    text.textContent = t('cloud.sending', { name: file.name });
 
     const form = new FormData();
     form.append('file', file);
@@ -813,20 +822,20 @@ document.getElementById('cloud-file').addEventListener('change', function () {
         if (!e.lengthComputable) return;
         const pct = Math.round(e.loaded / e.total * 100);
         bar.style.width = pct + '%';
-        text.textContent = 'Envoi de ' + file.name + ' — ' + pct + ' %';
+        text.textContent = t('cloud.sendingPct', { name: file.name, pct: pct });
     };
     xhr.onload = function () {
         input.value = '';
         wrap.classList.add('hidden');
         if (xhr.status === 200) {
-            toast('Fichier envoyé');
+            toast(t('cloud.sent'));
             loadCloud(currentFolder);
         } else if (xhr.status === 401) {
             window.location.href = '/admin/login';
         } else if (xhr.status === 413) {
-            toast('Fichier trop volumineux : le reverse proxy refuse la requête.', true);
+            toast(t('cloud.tooLarge'), true);
         } else {
-            let msg = 'Erreur ' + xhr.status;
+            let msg = t('err.generic', { status: xhr.status });
             try { msg = JSON.parse(xhr.responseText).error || msg; } catch (e) {}
             toast(msg, true);
         }
@@ -834,7 +843,7 @@ document.getElementById('cloud-file').addEventListener('change', function () {
     xhr.onerror = function () {
         input.value = '';
         wrap.classList.add('hidden');
-        toast("Erreur réseau pendant l'envoi", true);
+        toast(t('cloud.netError'), true);
     };
     xhr.send(form);
 });
@@ -842,64 +851,30 @@ document.getElementById('cloud-file').addEventListener('change', function () {
 /* ---------- Journal ---------- */
 let logPage = 1;
 const LOG_PER_PAGE = 40;
-const CAT_LABEL = {
-    auth: 'Authentification', upload: 'Dépôt', download: 'Téléchargement',
-    file: 'Fichier public', personal: 'Cloud personnel', admin: 'Administration', system: 'Système'
-};
+function catLabel(c) {
+    var map = { auth: 'cat.auth', upload: 'cat.upload1', download: 'cat.download1',
+                file: 'cat.file1', personal: 'cat.personal', admin: 'cat.admin', system: 'cat.system' };
+    return map[c] ? t(map[c]) : c;
+}
 const CAT_ICON = {
     auth: 'shield', upload: 'upload', download: 'download',
     file: 'files', personal: 'cloud', admin: 'users', system: 'journal'
 };
-// Libelles lisibles. La base garde des codes stables (utiles au filtrage),
-// l'interface les traduit — y compris pour les entrees deja enregistrees.
-const ACTION_LABEL = {
-    'depot': 'Fichier déposé',
-    'depot-interrompu': 'Dépôt interrompu',
-    'telechargement': 'Fichier téléchargé',
-    'telechargement-admin': 'Téléchargé depuis l\'administration',
-    'apercu': 'Fichier prévisualisé',
-    'introuvable': 'Fichier introuvable',
-    'mot-de-passe-refuse': 'Mot de passe du fichier refusé',
-    'connexion': 'Connexion',
-    'connexion-refusee': 'Connexion refusée',
-    'deconnexion': 'Déconnexion',
-    'mot-de-passe-valide': 'Mot de passe validé, passkey attendue',
-    'passkey-enregistree': 'Passkey enregistrée',
-    'passkey-revoquee': 'Passkey révoquée',
-    'passkey-renommee': 'Passkey renommée',
-    'passkey-refusee': 'Passkey refusée',
-    'session-revoquee': 'Session déconnectée',
-    'sessions-revoquees': 'Sessions déconnectées',
-    'mot-de-passe-change': 'Mot de passe changé',
-    'methode-connexion-changee': 'Méthode de connexion changée',
-    'suppression': 'Fichier supprimé',
-    'renommage': 'Fichier renommé',
-    'changement-identifiant': 'Identifiant changé',
-    'deplacement': 'Fichier déplacé',
-    'compte-cree': 'Compte administrateur créé',
-    'compte-supprime': 'Compte administrateur supprimé',
-    'invitation-creee': 'Invitation créée',
-    'invitation-supprimee': 'Invitation supprimée',
-    'demarrage': 'Serveur démarré',
-    'dossier-cree': 'Dossier créé',
-    'dossier-renomme': 'Dossier renommé',
-    'dossier-supprime': 'Dossier supprimé',
-    'archive-dossier': 'Dossier téléchargé en .zip',
-    'fichier-cree': 'Fichier créé',
-    'fichier-modifie': 'Fichier modifié',
-    'partage-public': 'Fichier partagé publiquement'
-};
+// Les libelles du journal vivent dans le dictionnaire, sous le prefixe « a. ».
+// La base garde des codes stables, utiles au filtrage, traduits a l'affichage.
 function actionLabel(code) {
-    if (ACTION_LABEL[code]) return ACTION_LABEL[code];
+    var key = 'a.' + code;
+    var label = t(key);
+    if (label !== key) return label;
     // Repli : on rend lisible un code inconnu plutôt que d'afficher des tirets.
-    const t = String(code || '').replace(/-/g, ' ');
-    return t.charAt(0).toUpperCase() + t.slice(1);
+    const readable = String(code || '').replace(/-/g, ' ');
+    return readable.charAt(0).toUpperCase() + readable.slice(1);
 }
 
 // Une cible vide, ou le "UNDEFINED" hérité des anciennes pages, ne s'affiche pas.
-function showTarget(t) {
-    if (!t) return false;
-    return String(t).trim().toUpperCase() !== 'UNDEFINED';
+function showTarget(value) {
+    if (!value) return false;
+    return String(value).trim().toUpperCase() !== 'UNDEFINED';
 }
 
 const LEVEL_STYLE = {
@@ -923,15 +898,15 @@ async function loadJournal(page) {
         ]);
 
         const parts = Object.keys(stats).sort().map(function (k) {
-            return (CAT_LABEL[k] || k) + ' : ' + stats[k];
+            return catLabel(k) + ' : ' + stats[k];
         });
         document.getElementById('log-stats').innerHTML = parts.length
-            ? '<span class="font-medium">Dernières 24 h —</span> ' + parts.map(esc).join(' · ')
-            : 'Aucun évènement sur les dernières 24 h.';
+            ? '<span class="font-medium">' + esc(t('log.last24')) + '</span> ' + parts.map(esc).join(' · ')
+            : esc(t('log.no24'));
 
         const box = document.getElementById('log-list');
         if (!data.entries.length) {
-            box.innerHTML = '<p class="muted py-8 text-center text-sm">Aucun évènement pour ce filtre</p>';
+            box.innerHTML = '<p class="muted py-8 text-center text-sm">' + esc(t('log.none')) + '</p>';
         } else {
             box.innerHTML = data.entries.map(function (e) {
                 return '<div class="card rounded-lg border p-3 shadow-sm">' +
@@ -940,7 +915,7 @@ async function loadJournal(page) {
                         '<div class="min-w-0 flex-1">' +
                             '<div class="flex flex-wrap items-baseline gap-x-2">' +
                                 '<p class="strong text-sm font-medium">' + esc(actionLabel(e.action)) + '</p>' +
-                                '<span class="muted text-[11px]">' + esc(CAT_LABEL[e.category] || e.category) + '</span>' +
+                                '<span class="muted text-[11px]">' + esc(catLabel(e.category)) + '</span>' +
                             '</div>' +
                             (showTarget(e.target) ? '<p class="muted mt-0.5 break-all text-xs"><code>' + esc(e.target) + '</code></p>' : '') +
                             (e.detail ? '<p class="muted mt-0.5 break-words text-xs">' + esc(e.detail) + '</p>' : '') +
@@ -951,7 +926,7 @@ async function loadJournal(page) {
             }).join('');
         }
         const pages = Math.max(1, Math.ceil(data.total / LOG_PER_PAGE));
-        document.getElementById('log-page').textContent = 'Page ' + logPage + ' / ' + pages + ' (' + data.total + ')';
+        document.getElementById('log-page').textContent = t('log.page', { page: logPage, pages: pages, total: data.total });
         document.getElementById('log-prev').disabled = logPage === 1;
         document.getElementById('log-next').disabled = logPage >= pages;
     } catch (e) { toast(e.message, true); }
@@ -988,11 +963,11 @@ let viewerDirty = false;
 
 function markDirty(on) {
     viewerDirty = on;
-    viewerSave.textContent = on ? 'Enregistrer •' : 'Enregistrer';
+    viewerSave.textContent = t(on ? 'view.saveDirty' : 'view.save');
 }
 
 function closeViewer(force) {
-    if (!force && viewerDirty && !confirm('Modifications non enregistrées. Fermer quand même ?')) return;
+    if (!force && viewerDirty && !confirm(t('view.unsaved'))) return;
     viewer.classList.add('hidden');
     viewer.classList.remove('flex');
     viewerBody.className = 'flex min-h-0 flex-1 items-center justify-center overflow-auto';
@@ -1017,7 +992,7 @@ async function openViewer(file) {
     markDirty(false);
     // Etat neutre : le mode est fixe juste apres, selon le type de fichier.
     viewerBody.className = 'flex min-h-0 flex-1 items-center justify-center overflow-auto';
-    viewerBody.innerHTML = '<p class="muted p-8 text-sm">Chargement…</p>';
+    viewerBody.innerHTML = '<p class="muted p-8 text-sm">' + esc(t('view.loading')) + '</p>';
     viewer.classList.remove('hidden');
     viewer.classList.add('flex');
 
@@ -1053,15 +1028,14 @@ async function openViewer(file) {
     // Fichier texte ou source : on charge le contenu dans l'éditeur.
     if (file.file_size > MAX_EDIT) {
         viewerBody.innerHTML = '<p class="muted p-8 text-center text-sm">' +
-            'Fichier trop volumineux pour l\'éditeur (' + humanSize(file.file_size) +
-            ', maximum ' + humanSize(MAX_EDIT) + '). Téléchargez-le pour le consulter.</p>';
+            esc(t('view.tooBig', { size: humanSize(file.file_size), max: humanSize(MAX_EDIT) })) + '</p>';
         return;
     }
 
     let content;
     try {
         const res = await fetch(src, { credentials: 'same-origin' });
-        if (!res.ok) throw new Error('Lecture impossible (' + res.status + ')');
+        if (!res.ok) throw new Error(t('view.readFailed', { status: res.status }));
         content = await res.text();
     } catch (e) {
         viewerBody.innerHTML = '<p class="p-8 text-center text-sm text-red-400">' + esc(e.message) + '</p>';
@@ -1080,7 +1054,7 @@ async function openViewer(file) {
         ta.addEventListener('input', function () { markDirty(true); });
         viewerBody.appendChild(ta);
         document.getElementById('viewer-meta').textContent =
-            humanSize(file.file_size) + ' · éditeur simplifié (coloration indisponible)';
+            t('view.plainEditor', { size: humanSize(file.file_size) });
         return;
     }
 
@@ -1126,12 +1100,12 @@ async function saveViewer() {
             body: content
         });
         const data = await res.json().catch(function () { return {}; });
-        if (!res.ok) throw new Error(data.error || ('Erreur ' + res.status));
+        if (!res.ok) throw new Error(data.error || t('err.generic', { status: res.status }));
 
         viewerFile.file_size = data.file_size;
         document.getElementById('viewer-meta').textContent = humanSize(data.file_size);
         markDirty(false);
-        toast('Fichier enregistré');
+        toast(t('view.saved'));
         loadCloud(currentFolder);
     } catch (e) { toast(e.message, true); }
 }
@@ -1185,46 +1159,46 @@ function menuFor(target) {
     if (target.kind === 'file') {
         const head = [];
         if (canPreview(target.name)) {
-            head.push({ cmd: 'view', icon: iconForFile(target.name), label: 'Prévisualiser' });
+            head.push({ cmd: 'view', icon: iconForFile(target.name), label: t('menu.preview') });
         } else if (canEdit(target.name, target.size)) {
-            head.push({ cmd: 'view', icon: 'code', label: 'Modifier dans l\'éditeur' });
+            head.push({ cmd: 'view', icon: 'code', label: t('menu.edit') });
         }
         if (head.length) head.push({ sep: true });
 
         return head.concat([
-            { cmd: 'open',      icon: 'download',   label: 'Télécharger' },
-            { cmd: 'preview',   icon: 'file',       label: 'Ouvrir dans le navigateur' },
+            { cmd: 'open',      icon: 'download',   label: t('act.download') },
+            { cmd: 'preview',   icon: 'file',       label: t('menu.openBrowser') },
             { sep: true },
-            { cmd: 'share',     icon: 'share',      label: 'Partager publiquement' },
-            { cmd: 'sharepass', icon: 'share-lock', label: 'Partager avec un mot de passe' },
+            { cmd: 'share',     icon: 'share',      label: t('menu.share') },
+            { cmd: 'sharepass', icon: 'share-lock', label: t('menu.sharePass') },
             { sep: true },
-            { cmd: 'rename',    icon: 'edit',       label: 'Renommer' },
-            { cmd: 'move',      icon: 'move',       label: 'Déplacer vers…' },
-            { cmd: 'copylink',  icon: 'tag',        label: 'Copier le lien privé' },
+            { cmd: 'rename',    icon: 'edit',       label: t('act.rename') },
+            { cmd: 'move',      icon: 'move',       label: t('menu.move') },
+            { cmd: 'copylink',  icon: 'tag',        label: t('menu.copyPrivate') },
             { sep: true },
-            { cmd: 'delete',    icon: 'trash',      label: 'Supprimer', danger: true }
+            { cmd: 'delete',    icon: 'trash',      label: t('act.delete'), danger: true }
         ]);
     }
     if (target.kind === 'folder') {
         return [
-            { cmd: 'openfolder',  icon: 'folder',  label: 'Ouvrir' },
-            { cmd: 'zipfolder',   icon: 'archive', label: 'Télécharger en .zip' },
+            { cmd: 'openfolder',  icon: 'folder',  label: t('menu.open') },
+            { cmd: 'zipfolder',   icon: 'archive', label: t('menu.zip') },
             { sep: true },
-            { cmd: 'renamefolder', icon: 'edit',   label: 'Renommer' },
-            { cmd: 'upload',      icon: 'upload',  label: 'Envoyer un fichier ici' },
+            { cmd: 'renamefolder', icon: 'edit',   label: t('act.rename') },
+            { cmd: 'upload',      icon: 'upload',  label: t('menu.uploadHere') },
             { sep: true },
-            { cmd: 'delfolder',   icon: 'trash',   label: 'Supprimer le dossier', danger: true }
+            { cmd: 'delfolder',   icon: 'trash',   label: t('menu.deleteFolder'), danger: true }
         ];
     }
     return [
-        { cmd: 'mkdir',    icon: 'folder-plus', label: 'Nouveau dossier' },
-        { cmd: 'mkfile',   icon: 'file-plus',   label: 'Nouveau fichier' },
-        { cmd: 'upload',   icon: 'upload',      label: 'Envoyer un fichier' },
+        { cmd: 'mkdir',    icon: 'folder-plus', label: t('cloud.newFolder') },
+        { cmd: 'mkfile',   icon: 'file-plus',   label: t('cloud.newFile') },
+        { cmd: 'upload',   icon: 'upload',      label: t('cloud.upload') },
         { sep: true },
-        { cmd: 'ziphere',  icon: 'archive',     label: 'Télécharger ce dossier en .zip' },
+        { cmd: 'ziphere',  icon: 'archive',     label: t('menu.zipHere') },
         { sep: true },
-        { cmd: 'up',       icon: 'back',        label: 'Dossier parent' },
-        { cmd: 'refresh',  icon: 'journal',     label: 'Actualiser' }
+        { cmd: 'up',       icon: 'back',        label: t('cloud.parent') },
+        { cmd: 'refresh',  icon: 'journal',     label: t('menu.refresh') }
     ];
 }
 
@@ -1274,9 +1248,7 @@ window.addEventListener('resize', closeCtx);
 /* Fenêtre affichant le lien d'un partage */
 const shareModal = document.getElementById('share-modal');
 function openShare(url, protected_) {
-    document.getElementById('share-sub').textContent = protected_
-        ? "Le destinataire devra saisir le mot de passe pour télécharger."
-        : "Toute personne disposant de ce lien peut télécharger le fichier.";
+    document.getElementById('share-sub').textContent = t(protected_ ? 'share.protected' : 'share.public');
     document.getElementById('share-url').value = url;
     shareModal.classList.remove('hidden');
     shareModal.classList.add('flex');
@@ -1290,9 +1262,9 @@ document.getElementById('share-close').addEventListener('click', closeShare);
 shareModal.addEventListener('click', function (ev) { if (ev.target === shareModal) closeShare(); });
 document.getElementById('share-copy').addEventListener('click', function () {
     const url = document.getElementById('share-url').value;
-    navigator.clipboard.writeText(url).then(function () { toast('Lien copié'); }, function () {
+    navigator.clipboard.writeText(url).then(function () { toast(t('share.copied')); }, function () {
         document.getElementById('share-url').select();
-        toast('Copiez le lien sélectionné', true);
+        toast(t('share.selectManually'), true);
     });
 });
 
@@ -1300,16 +1272,17 @@ ctx.addEventListener('click', async function (ev) {
     const btn = ev.target.closest('button[data-cmd]');
     if (!btn) return;
     closeCtx();
-    const t = ctxTarget;
-    const dl = '/admin/personal/download?id=' + encodeURIComponent(t.id || '');
+    // Renomme depuis t : ce nom masquait la fonction de traduction.
+    const target = ctxTarget;
+    const dl = '/admin/personal/download?id=' + encodeURIComponent(target.id || '');
     // Chemin complet du dossier visé, le menu ne connaît que son nom.
-    const folderPath = t.kind === 'folder' ? currentFolder + t.name + '/' : currentFolder;
+    const folderPath = target.kind === 'folder' ? currentFolder + target.name + '/' : currentFolder;
 
     try {
         switch (btn.dataset.cmd) {
             /* --- Fichiers --- */
             case 'view': {
-                const f = fileById(t.id);
+                const f = fileById(target.id);
                 if (f) openViewer(f);
                 break;
             }
@@ -1317,40 +1290,40 @@ ctx.addEventListener('click', async function (ev) {
             case 'preview':  window.open(dl + '&preview=true', '_blank', 'noopener'); break;
             case 'copylink':
                 await navigator.clipboard.writeText(new URL(dl, window.location.origin).href);
-                toast('Lien privé copié — il exige votre session administrateur');
+                toast(t('share.privateCopied'));
                 break;
             case 'share': {
-                const r = await api('personal_share', { fileID: t.id, sharePassword: '' });
+                const r = await api('personal_share', { fileID: target.id, sharePassword: '' });
                 openShare(r.url, false);
                 break;
             }
             case 'sharepass': {
-                const pass = prompt('Mot de passe exigé pour télécharger :');
+                const pass = prompt(t('share.promptPass'));
                 if (!pass) return;
-                const r = await api('personal_share', { fileID: t.id, sharePassword: pass });
+                const r = await api('personal_share', { fileID: target.id, sharePassword: pass });
                 openShare(r.url, true);
                 break;
             }
             case 'rename': {
-                const name = prompt('Nouveau nom :', t.name || '');
+                const name = prompt(t('cloud.promptRename'), target.name || '');
                 if (!name) return;
-                await api('personal_rename', { fileID: t.id, newFileName: name });
-                toast('Fichier renommé');
+                await api('personal_rename', { fileID: target.id, newFileName: name });
+                toast(t('cloud.renamed'));
                 loadCloud(currentFolder);
                 break;
             }
             case 'move': {
-                const dest = prompt('Déplacer vers quel dossier ?', currentFolder);
+                const dest = prompt(t('cloud.promptMove'), currentFolder);
                 if (dest === null) return;
-                await api('personal_move', { fileID: t.id, folder: dest });
-                toast('Fichier déplacé');
+                await api('personal_move', { fileID: target.id, folder: dest });
+                toast(t('cloud.moved'));
                 loadCloud(currentFolder);
                 break;
             }
             case 'delete':
-                if (!confirm('Supprimer « ' + (t.name || 'ce fichier') + ' » ?')) return;
-                await api('personal_delete', { fileID: t.id });
-                toast('Fichier supprimé');
+                if (!confirm(t('cloud.confirmDelete', { name: target.name || '' }))) return;
+                await api('personal_delete', { fileID: target.id });
+                toast(t('cloud.deleted'));
                 loadCloud(currentFolder);
                 break;
 
@@ -1363,18 +1336,18 @@ ctx.addEventListener('click', async function (ev) {
                 window.location.href = '/admin/personal/zip?folder=' + encodeURIComponent(currentFolder);
                 break;
             case 'renamefolder': {
-                const name = prompt('Nouveau nom du dossier :', t.name || '');
+                const name = prompt(t('cloud.promptFolderRename'), target.name || '');
                 if (!name) return;
                 await api('folder_rename', { folder: folderPath, newFileName: name });
-                toast('Dossier renommé');
+                toast(t('cloud.folderRenamed'));
                 loadCloud(currentFolder);
                 break;
             }
             case 'delfolder':
-                if (!confirm('Supprimer le dossier « ' + t.name + " » et tout son contenu ?")) return;
+                if (!confirm(t('cloud.confirmFolderDelete', { name: target.name }))) return;
                 {
                     const r = await api('folder_delete', { folder: folderPath });
-                    toast('Dossier supprimé (' + r.files + ' fichier(s))');
+                    toast(t('cloud.folderDeleted', { n: r.files }));
                     loadCloud(currentFolder);
                 }
                 break;
@@ -1384,29 +1357,29 @@ ctx.addEventListener('click', async function (ev) {
             case 'mkdir':    createFolder(); break;
             case 'mkfile':   createFile(); break;
             case 'up':       document.getElementById('cloud-up').click(); break;
-            case 'refresh':  loadCloud(currentFolder); toast('Actualisé'); break;
+            case 'refresh':  loadCloud(currentFolder); toast(t('cloud.refreshed')); break;
         }
     } catch (e) { toast(e.message, true); }
 });
 
 async function createFolder() {
-    const name = prompt('Nom du nouveau dossier :');
+    const name = prompt(t('cloud.promptFolder'));
     if (!name) return;
     const clean = name.replace(/[\/\\]/g, '').trim();
     if (!clean) return;
     try {
         await api('folder_create', { folder: currentFolder + clean + '/' });
-        toast('Dossier créé');
+        toast(t('cloud.folderCreated'));
         loadCloud(currentFolder);
     } catch (e) { toast(e.message, true); }
 }
 
 async function createFile() {
-    const name = prompt('Nom du nouveau fichier :', 'notes.txt');
+    const name = prompt(t('cloud.promptFile'), 'notes.txt');
     if (!name) return;
     try {
         await api('personal_create', { folder: currentFolder, fileName: name });
-        toast('Fichier créé');
+        toast(t('cloud.fileCreated'));
         loadCloud(currentFolder);
     } catch (e) { toast(e.message, true); }
 }
@@ -1429,12 +1402,12 @@ function bufToB64url(buf) {
 const passkeysSupported = !!(window.PublicKeyCredential && navigator.credentials);
 
 async function addPasskey() {
-    if (!passkeysSupported) { toast('Ce navigateur ne gère pas les passkeys', true); return; }
+    if (!passkeysSupported) { toast(t('sec.pkUnsupported'), true); return; }
     const name = document.getElementById('passkey-name').value.trim() || 'Passkey';
     try {
         const beginRes = await fetch('/admin/webauthn/register/begin', { method: 'POST', credentials: 'same-origin' });
         const begin = await beginRes.json();
-        if (!beginRes.ok) throw new Error(begin.error || 'Cérémonie impossible');
+        if (!beginRes.ok) throw new Error(begin.error || t('sec.ceremonyFailed'));
 
         const opts = begin.options;
         opts.challenge = b64urlToBuf(opts.challenge);
@@ -1461,18 +1434,18 @@ async function addPasskey() {
             body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Enregistrement refusé');
+        if (!res.ok) throw new Error(data.error || t('sec.pkRefused'));
 
         document.getElementById('passkey-name').value = '';
         const ext = payload.clientExtensionResults || {};
         if (ext.credProps && ext.credProps.rk === false) {
-            toast('Passkey ajoutée, mais non résidente : elle ne servira pas à la connexion sans identifiant.', true);
+            toast(t('sec.pkNotResident'), true);
         } else {
-            toast('Passkey « ' + data.name + ' » enregistrée');
+            toast(t('sec.pkRegistered', { name: data.name }));
         }
         loadSecurity();
     } catch (e) {
-        toast(e.message || 'Enregistrement annulé', true);
+        toast(e.message || t('sec.pkCancelled'), true);
     }
 }
 document.getElementById('passkey-add').addEventListener('click', addPasskey);
@@ -1481,7 +1454,7 @@ document.getElementById('passkey-add').addEventListener('click', addPasskey);
 async function loadSecurity() {
     if (!passkeysSupported) {
         const el = document.getElementById('passkey-unsupported');
-        el.textContent = "Ce navigateur, ou ce contexte non sécurisé, ne gère pas les passkeys. Elles exigent HTTPS.";
+        el.textContent = t('sec.pkUnsupportedLong');
         el.classList.remove('hidden');
         document.getElementById('passkey-add').disabled = true;
     }
@@ -1495,25 +1468,25 @@ async function loadSecurity() {
             return '<div class="rowline flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">' +
                 '<div class="min-w-0 flex-1">' +
                     '<p class="strong text-sm font-medium">' + esc(k.name) + '</p>' +
-                    '<p class="muted text-xs">Ajoutée le ' + humanDate(k.created_at) + '</p>' +
-                    '<p class="muted text-xs">Dernier usage : ' + (k.last_used ? humanDate(k.last_used) : 'jamais') + '</p>' +
+                    '<p class="muted text-xs">' + esc(t('sec.addedOn', { date: humanDate(k.created_at) })) + '</p>' +
+                    '<p class="muted text-xs">' + esc(t('sec.lastUse', { date: k.last_used ? humanDate(k.last_used) : t('sec.never') })) + '</p>' +
                 '</div>' +
                 '<div class="flex gap-2">' +
-                    '<button data-act="krename" data-id="' + k.id + '" aria-label="Renommer" class="btn flex items-center justify-center rounded-md border px-3 py-2">' + icon('edit', 'icon h-4 w-4') + '</button>' +
-                    '<button data-act="kdelete" data-id="' + k.id + '" aria-label="Révoquer" class="btn flex items-center justify-center rounded-md border border-red-300 px-3 py-2 text-red-600 dark:border-red-500/40 dark:text-red-400">' + icon('trash', 'icon h-4 w-4') + '</button>' +
+                    '<button data-act="krename" data-id="' + k.id + '" aria-label="' + t('act.rename') + '" class="btn flex items-center justify-center rounded-md border px-3 py-2">' + icon('edit', 'icon h-4 w-4') + '</button>' +
+                    '<button data-act="kdelete" data-id="' + k.id + '" aria-label="' + t('sec.revoke') + '" class="btn flex items-center justify-center rounded-md border border-red-300 px-3 py-2 text-red-600 dark:border-red-500/40 dark:text-red-400">' + icon('trash', 'icon h-4 w-4') + '</button>' +
                 '</div></div>';
-        }).join('') : '<p class="muted text-sm">Aucune passkey enregistrée.</p>';
+        }).join('') : '<p class="muted text-sm">' + esc(t('sec.noPasskey')) + '</p>';
 
         document.getElementById('sessions-list').innerHTML = sessions.map(function (s) {
             return '<div class="rowline flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">' +
                 '<div class="min-w-0 flex-1">' +
-                    '<p class="strong text-sm font-medium">' + esc(s.ip_addr || 'IP inconnue') +
-                    (s.current ? ' <span class="ml-1 rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] text-white">cet appareil</span>' : '') + '</p>' +
+                    '<p class="strong text-sm font-medium">' + esc(s.ip_addr || t('sec.unknownIp')) +
+                    (s.current ? ' <span class="ml-1 rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] text-white">' + esc(t('sec.thisDevice')) + '</span>' : '') + '</p>' +
                     '<p class="muted break-words text-xs">' + esc((s.user_agent || '').slice(0, 80)) + '</p>' +
-                    '<p class="muted text-xs">Vue le ' + humanDate(s.last_seen) + '</p>' +
+                    '<p class="muted text-xs">' + esc(t('sec.seenOn', { date: humanDate(s.last_seen) })) + '</p>' +
                 '</div>' +
                 (s.current ? '' : '<button data-act="srevoke" data-id="' + esc(s.id) +
-                    '" class="btn rounded-md border border-red-300 px-3 py-2 text-xs text-red-600 dark:border-red-500/40 dark:text-red-400">Déconnecter</button>') +
+                    '" class="btn rounded-md border border-red-300 px-3 py-2 text-xs text-red-600 dark:border-red-500/40 dark:text-red-400">' + esc(t('sec.disconnect')) + '</button>') +
                 '</div>';
         }).join('');
     } catch (e) { toast(e.message, true); }
@@ -1524,14 +1497,14 @@ document.getElementById('passkeys-list').addEventListener('click', async functio
     if (!btn) return;
     try {
         if (btn.dataset.act === 'kdelete') {
-            if (!confirm('Révoquer cette passkey ?')) return;
+            if (!confirm(t('sec.confirmRevoke'))) return;
             await api('passkey_delete', { credID: Number(btn.dataset.id) });
-            toast('Passkey révoquée');
+            toast(t('sec.passkeyRevoked'));
         } else {
-            const name = prompt('Nouveau nom :');
+            const name = prompt(t('cloud.promptRename'));
             if (!name) return;
             await api('passkey_rename', { credID: Number(btn.dataset.id), credName: name });
-            toast('Passkey renommée');
+            toast(t('sec.passkeyRenamed'));
         }
         loadSecurity();
     } catch (e) { toast(e.message, true); }
@@ -1541,43 +1514,42 @@ document.getElementById('sessions-list').addEventListener('click', async functio
     if (!btn) return;
     try {
         await api('session_revoke', { sessionID: btn.dataset.id });
-        toast('Session déconnectée');
+        toast(t('sec.sessionRevoked'));
         loadSecurity();
     } catch (e) { toast(e.message, true); }
 });
 document.getElementById('sessions-revoke-others').addEventListener('click', async function () {
-    if (!confirm('Déconnecter tous vos autres appareils ?')) return;
+    if (!confirm(t('sec.confirmRevokeOthers'))) return;
     try {
         const r = await api('sessions_revoke_others');
-        toast(r.count + ' session(s) déconnectée(s)');
+        toast(t('sec.sessionsRevoked', { n: r.count }));
         loadSecurity();
     } catch (e) { toast(e.message, true); }
 });
 document.getElementById('auth-policy').addEventListener('change', async function () {
     try {
         await api('set_auth_policy', { authPolicy: this.value });
-        toast('Méthode de connexion mise à jour');
+        toast(t('sec.methodUpdated'));
     } catch (e) { toast(e.message, true); loadSecurity(); }
 });
 document.getElementById('pwd-save').addEventListener('click', async function () {
     const cur = document.getElementById('pwd-current').value;
     const next = document.getElementById('pwd-new').value;
-    if (!cur || !next) { toast('Remplissez les deux champs', true); return; }
+    if (!cur || !next) { toast(t('sec.fillBoth'), true); return; }
     try {
         await api('change_password', { currentPassword: cur, newPassword: next });
         document.getElementById('pwd-current').value = '';
         document.getElementById('pwd-new').value = '';
-        toast('Mot de passe changé, autres appareils déconnectés');
+        toast(t('sec.passwordChanged'));
         loadSecurity();
     } catch (e) { toast(e.message, true); }
 });
 
 /* ---------- Administrateurs ---------- */
-const POLICY_LABEL = {
-    password: 'Mot de passe',
-    passkey_or_password: 'Passkey ou mot de passe',
-    password_and_passkey: 'Mot de passe + passkey'
-};
+function policyLabel(p) {
+    var map = { password: 'pol.password', passkey_or_password: 'pol.either', password_and_passkey: 'pol.both' };
+    return map[p] ? t(map[p]) : p;
+}
 async function loadAdmins() {
     try {
         const [admins, invites] = await Promise.all([api('admins_list'), api('invites_list')]);
@@ -1587,13 +1559,13 @@ async function loadAdmins() {
                 '<div class="flex items-start justify-between gap-3">' +
                     '<div class="min-w-0 flex-1">' +
                         '<p class="strong text-sm font-medium">' + esc(a.username) +
-                            (a.id === ME.id ? ' <span class="muted text-[11px]">(vous)</span>' : '') + '</p>' +
+                            (a.id === ME.id ? ' <span class="muted text-[11px]">' + esc(t('adm.you')) + '</span>' : '') + '</p>' +
                         '<p class="muted ellipsis text-xs">' + esc(a.first_name + ' ' + a.last_name) + ' · ' + esc(a.email) + '</p>' +
-                        '<p class="muted mt-1 text-xs">' + esc(POLICY_LABEL[a.auth_policy] || a.auth_policy) +
-                            ' · ' + a.passkeys + ' passkey(s) · ' + a.sessions + ' session(s)</p>' +
+                        '<p class="muted mt-1 text-xs">' + esc(t('adm.stats', {
+                            policy: policyLabel(a.auth_policy), passkeys: a.passkeys, sessions: a.sessions })) + '</p>' +
                     '</div>' +
                     (a.id === ME.id ? '' :
-                        '<button data-act="adel" data-id="' + a.id + '" aria-label="Supprimer" class="btn flex items-center justify-center rounded-md border border-red-300 px-3 py-2 text-red-600 dark:border-red-500/40 dark:text-red-400">' + icon('trash', 'icon h-4 w-4') + '</button>') +
+                        '<button data-act="adel" data-id="' + a.id + '" aria-label="' + t('act.delete') + '" class="btn flex items-center justify-center rounded-md border border-red-300 px-3 py-2 text-red-600 dark:border-red-500/40 dark:text-red-400">' + icon('trash', 'icon h-4 w-4') + '</button>') +
                 '</div></div>';
         }).join('');
 
@@ -1601,31 +1573,33 @@ async function loadAdmins() {
             return '<div class="rowline flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">' +
                 '<div class="min-w-0 flex-1">' +
                     '<code class="strong break-all text-sm">' + esc(i.token) + '</code>' +
-                    (i.used ? ' <span class="muted text-xs">— utilisée' + (i.used_by ? ' par ' + esc(i.used_by) : '') + '</span>'
-                            : ' <span class="text-xs text-emerald-600 dark:text-emerald-400">— disponible</span>') +
-                    '<p class="muted text-xs">Créée le ' + humanDate(i.created_at) + (i.created_by ? ' par ' + esc(i.created_by) : '') + '</p>' +
+                    (i.used ? ' <span class="muted text-xs">' + esc(i.used_by ? t('adm.usedBy', { who: i.used_by }) : t('adm.used')) + '</span>'
+                            : ' <span class="text-xs text-emerald-600 dark:text-emerald-400">' + esc(t('adm.available')) + '</span>') +
+                    '<p class="muted text-xs">' + esc(i.created_by
+                        ? t('adm.createdBy', { date: humanDate(i.created_at), who: i.created_by })
+                        : t('adm.createdOn', { date: humanDate(i.created_at) })) + '</p>' +
                 '</div>' +
                 (i.used ? '' : '<div class="flex gap-2">' +
-                    '<button data-act="icopy" data-token="' + esc(i.token) + '" class="btn rounded-md border px-3 py-2 text-xs">Copier</button>' +
-                    '<button data-act="idel" data-token="' + esc(i.token) + '" aria-label="Supprimer" class="btn flex items-center justify-center rounded-md border border-red-300 px-3 py-2 text-red-600 dark:border-red-500/40 dark:text-red-400">' + icon('trash', 'icon h-4 w-4') + '</button></div>') +
+                    '<button data-act="icopy" data-token="' + esc(i.token) + '" class="btn rounded-md border px-3 py-2 text-xs">' + esc(t('adm.copy')) + '</button>' +
+                    '<button data-act="idel" data-token="' + esc(i.token) + '" aria-label="' + t('act.delete') + '" class="btn flex items-center justify-center rounded-md border border-red-300 px-3 py-2 text-red-600 dark:border-red-500/40 dark:text-red-400">' + icon('trash', 'icon h-4 w-4') + '</button></div>') +
                 '</div>';
-        }).join('') : '<p class="muted text-sm">Aucun code d\'invitation.</p>';
+        }).join('') : '<p class="muted text-sm">' + esc(t('adm.noInvites')) + '</p>';
     } catch (e) { toast(e.message, true); }
 }
 document.getElementById('admins-list').addEventListener('click', async function (ev) {
     const btn = ev.target.closest('button[data-act="adel"]');
     if (!btn) return;
-    if (!confirm('Supprimer ce compte administrateur ? Ses sessions et passkeys seront révoquées.')) return;
+    if (!confirm(t('adm.confirmDelete'))) return;
     try {
         await api('admin_delete', { adminID: Number(btn.dataset.id) });
-        toast('Compte supprimé');
+        toast(t('adm.deleted'));
         loadAdmins();
     } catch (e) { toast(e.message, true); }
 });
 document.getElementById('invite-create').addEventListener('click', async function () {
     try {
         const r = await api('invite_create');
-        toast('Code créé : ' + r.token);
+        toast(t('adm.codeCreated', { token: r.token }));
         loadAdmins();
     } catch (e) { toast(e.message, true); }
 });
@@ -1633,13 +1607,13 @@ document.getElementById('invites-list').addEventListener('click', async function
     const btn = ev.target.closest('button[data-act]');
     if (!btn) return;
     if (btn.dataset.act === 'icopy') {
-        navigator.clipboard.writeText(btn.dataset.token).then(function () { toast('Code copié'); });
+        navigator.clipboard.writeText(btn.dataset.token).then(function () { toast(t('adm.codeCopied')); });
         return;
     }
-    if (!confirm("Supprimer ce code d'invitation ?")) return;
+    if (!confirm(t('adm.confirmDeleteInvite'))) return;
     try {
         await api('invite_delete', { token: btn.dataset.token });
-        toast('Code supprimé');
+        toast(t('adm.codeDeleted'));
         loadAdmins();
     } catch (e) { toast(e.message, true); }
 });
@@ -1655,8 +1629,20 @@ let ME = {};
         document.getElementById('m-user').textContent = label;
     } catch (e) { return; }
     const tab = (location.hash || '#overview').slice(1);
-    selectTab(TABS.some(function (t) { return t.id === tab; }) ? tab : 'overview');
+    selectTab(TABS.some(function (x) { return x.id === tab; }) ? tab : 'overview');
 })();
+
+/* ---------- Langue ---------- */
+document.getElementById('langSwitch').innerHTML = ftLangSwitcher();
+ftApplyI18n();
+
+// Presque tout le tableau de bord est construit en JavaScript : au changement de
+// langue on redessine la navigation puis le panneau courant.
+document.addEventListener('ft:lang', function () {
+    renderNav();
+    const current = (location.hash || '#overview').slice(1);
+    selectTab(TABS.some(function (x) { return x.id === current; }) ? current : 'overview');
+});
 </script>
 </body>
 </html>

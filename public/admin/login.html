@@ -4,9 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#4f46e5">
-    <title>Se connecter | Administration</title>
+    <title data-i18n="login.title">Se connecter | Administration</title>
     <link rel="shortcut icon" href="../img/favicon.png" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="/assets/i18n.css">
+    <script src="/assets/lang-admin.js"></script>
+    <script src="/assets/i18n.js" defer></script>
     <style>
         html[data-theme="light"] body { background-color: #f3f4f6 !important; color: #111827 !important; }
         html[data-theme="dark"] body { background-color: #0f172a !important; color: #f8fafc !important; }
@@ -32,34 +35,36 @@
 </head>
 <body class="min-h-screen bg-gray-100 text-gray-900 transition-colors duration-200 dark:bg-gray-900 dark:text-gray-100">
 
-<button id="themeToggle" type="button" class="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-xl ring-1 ring-black/10 transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="Changer de thème" aria-pressed="false"></button>
+<div id="langSwitch" class="fixed bottom-4 left-4 z-50"></div>
+
+<button id="themeToggle" type="button" class="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-xl ring-1 ring-black/10 transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-pressed="false"></button>
 
 <div class="flex items-center justify-center min-h-screen px-4 py-8 sm:px-6">
     <div class="login-card w-full max-w-xl bg-white p-5 sm:p-6 rounded-lg shadow-md dark:shadow-black/20">
         <div class="text-center">
-            <p class="text-lg font-semibold text-indigo-600 dark:text-indigo-400">Administration | Gestion</p>
-            <h1 class="login-title mt-3 text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-gray-100">Connexion</h1>
-            <span class="login-subtitle mt-4 block text-base sm:text-lg md:text-2xl text-gray-600 dark:text-gray-300">Connectez-vous pour accéder au panneau d'administration.</span>
+            <p class="text-lg font-semibold text-indigo-600 dark:text-indigo-400" data-i18n="login.brand">Administration | Gestion</p>
+            <h1 class="login-title mt-3 text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-gray-100" data-i18n="login.heading">Connexion</h1>
+            <span class="login-subtitle mt-4 block text-base sm:text-lg md:text-2xl text-gray-600 dark:text-gray-300" data-i18n="login.subtitle">Connectez-vous pour accéder au panneau d'administration.</span>
             <div class="mt-8">
                 <form id="loginForm" class="flex flex-col items-center justify-center">
-                    <label for="username" class="sr-only">Identifiant ou E-mail</label>
-                    <input type="text" id="username" name="username" autocomplete="username webauthn" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Nom d'utilisateur ou Adresse e-mail" class="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500">
-                    <label for="password" class="sr-only">Mot de passe</label>
-                    <input type="password" id="password" name="password" autocomplete="current-password" placeholder="Mot de passe" class="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500">
+                    <label for="username" class="sr-only" data-i18n="login.identLabel">Identifiant ou E-mail</label>
+                    <input type="text" id="username" name="username" autocomplete="username webauthn" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Nom d'utilisateur ou Adresse e-mail" data-i18n-placeholder="login.identPlaceholder" class="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500">
+                    <label for="password" class="sr-only" data-i18n="login.passwordLabel">Mot de passe</label>
+                    <input type="password" id="password" name="password" autocomplete="current-password" placeholder="Mot de passe" data-i18n-placeholder="login.passwordPlaceholder" class="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500">
                     <span id="connect-msg" class="text-sm mb-4 text-red-500 dark:text-red-400"></span>
-                    <button id="submit-btn" type="button" class="w-full rounded-md bg-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-md hover:cursor-pointer hover:bg-indigo-500 transition dark:hover:bg-indigo-400">Se connecter</button>
+                    <button id="submit-btn" type="button" class="w-full rounded-md bg-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-md hover:cursor-pointer hover:bg-indigo-500 transition dark:hover:bg-indigo-400" data-i18n="login.submit">Se connecter</button>
                     <div id="passkey-block" class="mt-4 hidden w-full">
                         <div class="mb-3 flex items-center gap-3">
                             <span class="h-px flex-1 bg-gray-300 dark:bg-gray-600"></span>
-                            <span class="text-xs text-gray-500 dark:text-gray-400">ou</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400" data-i18n="login.or">ou</span>
                             <span class="h-px flex-1 bg-gray-300 dark:bg-gray-600"></span>
                         </div>
-                        <button id="passkey-btn" type="button" class="w-full rounded-md border border-indigo-500 px-6 py-3 text-base font-semibold text-indigo-600 transition hover:cursor-pointer hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10">Se connecter avec une passkey</button>
+                        <button id="passkey-btn" type="button" class="w-full rounded-md border border-indigo-500 px-6 py-3 text-base font-semibold text-indigo-600 transition hover:cursor-pointer hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10" data-i18n="login.passkey">Se connecter avec une passkey</button>
                         <p id="passkey-state" class="mt-2 text-xs text-gray-500 dark:text-gray-400"></p>
                     </div>
                 </form>
             </div>
-            <span class="login-footer mt-6 text-sm font-semibold text-gray-900 dark:text-gray-100">©FileTransfer - Tous droits réservés</span>
+            <span class="login-footer mt-6 text-sm font-semibold text-gray-900 dark:text-gray-100" data-i18n="login.copyright">©FileTransfer - Tous droits réservés</span>
         </div>
     </div>
 </div>
@@ -79,7 +84,7 @@
         if (button) {
             button.innerHTML = isDark ? sunIcon : moonIcon;
             button.setAttribute('aria-pressed', String(isDark));
-            button.setAttribute('aria-label', isDark ? 'Passer au thème clair' : 'Passer au thème sombre');
+            button.setAttribute('aria-label', t(isDark ? 'theme.toLight' : 'theme.toDark'));
         }
     }
 
@@ -185,7 +190,7 @@
             method: 'POST', credentials: 'same-origin'
         });
         const begin = await beginRes.json();
-        if (!beginRes.ok) throw new Error(begin.error || 'Ceremonie impossible');
+        if (!beginRes.ok) throw new Error(begin.error || t('login.ceremonyFailed'));
 
         const opts = begin.options;
         opts.challenge = b64urlToBuf(opts.challenge);
@@ -227,7 +232,7 @@
             body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Passkey refusee');
+        if (!res.ok) throw new Error(data.error || t('login.passkeyRefused'));
         return data;
     }
 
@@ -235,11 +240,11 @@
         connectMsg.textContent = '';
         try {
             await passkeyCeremony('', false);
-            info('Connexion reussie');
+            info(t('login.success'));
             window.location.href = '/admin/dashboard';
         } catch (e) {
             if (e && e.name === 'AbortError') return;
-            fail(e.message || 'Connexion par passkey annulee');
+            fail(e.message || t('login.passkeyCancelled'));
         }
     });
 
@@ -254,22 +259,22 @@
 
     (async function armConditionalPasskey() {
         if (!passkeysSupported) {
-            state("Passkeys non gérées par ce navigateur (HTTPS requis).");
+            state(t('pk.unsupported'));
             return;
         }
         if (typeof PublicKeyCredential.isConditionalMediationAvailable !== 'function') {
-            state("Ce navigateur ne gère pas l'autocomplétion des passkeys. Utilisez le bouton ci-dessus.");
+            state(t('pk.noConditional'));
             return;
         }
         try {
             if (!(await PublicKeyCredential.isConditionalMediationAvailable())) {
-                state("Autocomplétion des passkeys indisponible ici. Utilisez le bouton ci-dessus.");
+                state(t('pk.unavailable'));
                 return;
             }
-            state("Autocomplétion active — touchez le champ identifiant pour choisir votre passkey.");
+            state(t('pk.active'));
 
             await passkeyCeremony('', true);
-            info('Connexion reussie');
+            info(t('login.success'));
             window.location.href = '/admin/dashboard';
         } catch (e) {
             // Une annulation volontaire ou le passage au mot de passe ne sont pas
@@ -278,7 +283,7 @@
                 state('');
                 return;
             }
-            state('Autocomplétion indisponible : ' + (e && (e.message || e.name) || 'raison inconnue'));
+            state(t('pk.error', { reason: (e && (e.message || e.name)) || t('pk.unknownReason') }));
         }
     })();
 
@@ -295,7 +300,7 @@
         const identifier = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value;
         if (!identifier || !password) {
-            fail('Renseignez votre identifiant et votre mot de passe');
+            fail(t('login.needBoth'));
             return;
         }
 
@@ -308,24 +313,30 @@
             });
             const data = await res.json();
             if (!res.ok) {
-                fail(data.error || 'Identifiants incorrects');
+                fail(data.error || t('login.badCreds'));
                 return;
             }
 
             if (data.status === 'PASSKEY_REQUIRED') {
                 if (!passkeysSupported) {
-                    fail('Ce compte exige une passkey, mais ce navigateur ne les gere pas');
+                    fail(t('login.passkeyUnsupportedAccount'));
                     return;
                 }
-                info('Mot de passe accepte — validez avec votre passkey');
+                info(t('login.passkeyRequired'));
                 await passkeyCeremony(data.pending, false);
             }
 
             window.location.href = '/admin/dashboard';
         } catch (err) {
-            fail(err.message || 'Erreur de connexion au serveur');
+            fail(err.message || t('login.serverError'));
         }
     };
+
+    document.getElementById('langSwitch').innerHTML = ftLangSwitcher();
+    ftApplyI18n();
+    document.addEventListener('ft:lang', function () {
+        applyTheme(document.documentElement.getAttribute('data-theme'));
+    });
 </script>
 </body>
 </html>
